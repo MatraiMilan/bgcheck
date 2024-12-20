@@ -6,17 +6,20 @@ const fetchPath = '/masolat-keszletkisopres-es-akcio';
 const itemDataAttribute = 'data-wnd_product_item_data';
 const resultsFileName = 'results.json';
 const resultsFileFolderName = 'data';
-const resultsFilePath = `${__dirname}/${resultsFileFolderName}/${resultsFileName}`
+const resultsFilePath = `${__dirname}/${resultsFileFolderName}/${resultsFileName}`;
+const outOfStockText = 'Nincs raktáron';
 
 const mapItems = (res) => {
         const attributes = res.attributes[itemDataAttribute];
         const parsedAttributes = JSON.parse(attributes);
+        const isOutOfStock = res.innerText.includes(outOfStockText);
 
         return {
                 id: parsedAttributes.id,
                 name: parsedAttributes.name,
                 price: parsedAttributes.price,
-                url: `${baseUrl}${parsedAttributes.detail_url}`
+                url: `${baseUrl}${parsedAttributes.detail_url}`,
+                outOfStock: isOutOfStock
         };
 };
 
@@ -68,6 +71,30 @@ const priceChangeCheck = (prevResults, prevResultsIds, currentResults, currentRe
         })
 }
 
+const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, currentResultsIds) => {
+        const stayedItemIds = prevResultsIds.filter(id => currentResultsIds.includes(id));
+
+        if (!stayedItemIds.length) {
+                return [];
+        }
+
+        const stayedPrevItems = prevResults.filter(prevItem => stayedItemIds.includes(prevItem.id));
+        // return items with changed outOfStock value
+        return stayedPrevItems.filter(stayedPrevItem => 
+                currentResults.find(currResult => 
+                        stayedPrevItem.id === currResult.id && 
+                        stayedPrevItem.outOfStock !== currResult.outOfStock && 
+                        currResult.outOfStock === true
+                )
+        ).map(changedStayedPrevItem => {
+                return {
+                        ...changedStayedPrevItem,
+                        outOfStock: true
+                };
+        });
+
+}
+
 const matchResults = (prevResults, currentResults) => {
         const prevResultsIds = prevResults.map(({id}) => id);
         const currentResultsIds = currentResults.map(({id}) => id);
@@ -77,8 +104,9 @@ const matchResults = (prevResults, currentResults) => {
 
         const diff = [...removedItemIds, ...addedItemIds];
         const itemsWithPriceChange = priceChangeCheck(prevResults, prevResultsIds, currentResults, currentResultsIds);
+        const newOutOfStockItems = outOfStockChangeCheck(prevResults, prevResultsIds, currentResults, currentResultsIds);
 
-        if (!(diff.length || itemsWithPriceChange.length)) {
+        if (!(diff.length || itemsWithPriceChange.length || newOutOfStockItems.length)) {
                 console.log('There is nothing new, finishing...');
                 return;
         }
@@ -89,6 +117,7 @@ const matchResults = (prevResults, currentResults) => {
         removedItems.length && console.log('The following items are removed:', removedItems);
         addedItems.length && console.log('The following items are added:', addedItems);
         itemsWithPriceChange.length && console.log('The price of the following items has changed:', itemsWithPriceChange);
+        newOutOfStockItems.length && console.log('The following items are out of stock now:', newOutOfStockItems)
 
         writeResulsToFile(currentResults);
 };
