@@ -43,26 +43,52 @@ const readResultsFromFile = () => {
         return resultsFromFile;
 };
 
+const priceChangeCheck = (prevResults, prevResultsIds, currentResults, currentResultsIds) => {
+        const stayedItemIds = prevResultsIds.filter(id => currentResultsIds.includes(id));
+        
+        if (!stayedItemIds.length) {
+                return [];
+        }
+
+        const stayedPrevItems = prevResults.filter(prevItem => stayedItemIds.includes(prevItem.id));
+        // return items with changed price
+        return stayedPrevItems.filter(stayedPrevItem => 
+                currentResults.find(currResult => stayedPrevItem.id === currResult.id && stayedPrevItem.price !== currResult.price)
+        ).map(changedStayedPrevItem => {
+                const oldPrice = changedStayedPrevItem.price;
+                const newPrice = currentResults.find(item => item.id === changedStayedPrevItem.id).price;
+                // the price will be oldPrice
+                delete changedStayedPrevItem.price;
+
+                return {
+                        ...changedStayedPrevItem,
+                        oldPrice,
+                        newPrice
+                };
+        })
+}
+
 const matchResults = (prevResults, currentResults) => {
         const prevResultsIds = prevResults.map(({id}) => id);
         const currentResultsIds = currentResults.map(({id}) => id);
 
-        const diff = prevResultsIds.filter(id => !currentResultsIds.includes(id))
-                .concat(currentResultsIds.filter(id => !prevResultsIds.includes(id)));
+        const removedItemIds = prevResultsIds.filter(id => !currentResultsIds.includes(id));
+        const addedItemIds = currentResultsIds.filter(id => !prevResultsIds.includes(id));
 
-        if (!diff.length) {
+        const diff = [...removedItemIds, ...addedItemIds];
+        const itemsWithPriceChange = priceChangeCheck(prevResults, prevResultsIds, currentResults, currentResultsIds);
+
+        if (!(diff.length || itemsWithPriceChange.length)) {
                 console.log('There is nothing new, finishing...');
                 return;
         }
-
-        const removedItemIds = prevResultsIds.filter(id => diff.includes(id));
-        const addedItemIds = currentResultsIds.filter(id => diff.includes(id));
 
         const removedItems = removedItemIds.map(id => prevResults.find(item => item.id === id));
         const addedItems = addedItemIds.map(id => currentResults.find(item => item.id === id));
 
         removedItems.length && console.log('The following items are removed:', removedItems);
         addedItems.length && console.log('The following items are added:', addedItems);
+        itemsWithPriceChange.length && console.log('The price of the following items has changed:', itemsWithPriceChange);
 
         writeResulsToFile(currentResults);
 };
