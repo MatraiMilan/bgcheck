@@ -2,7 +2,7 @@ const parse = require('node-html-parser').parse;
 fs = require('fs');
 
 const baseUrl = 'https://www.beergourmet.hu';
-const fetchPath = '/masolat-keszletkisopres-es-akcio';
+const fetchPath = '/keszletkisopres-giga-akcio';
 const itemDataAttribute = 'data-wnd_product_item_data';
 const resultsFileName = 'results.json';
 const resultsFileFolderName = 'data';
