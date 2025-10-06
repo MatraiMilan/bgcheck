@@ -1,5 +1,11 @@
-const parse = require('node-html-parser').parse;
-fs = require('fs');
+import notifier from 'node-notifier';
+import { parse } from "node-html-parser";
+import fs from "fs";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const baseUrl = 'https://www.beergourmet.hu';
 const fetchPath = '/keszletkisopres-giga-akcio';
@@ -7,6 +13,7 @@ const itemDataAttribute = 'data-wnd_product_item_data';
 const resultsFileName = 'results.json';
 const resultsFileFolderName = 'data';
 const resultsFilePath = `${__dirname}/${resultsFileFolderName}/${resultsFileName}`;
+const beerIconPath = `${__dirname}/assets/beer.png`;
 const outOfStockText = 'Nincs raktáron';
 
 const mapItems = (res) => {
@@ -95,6 +102,20 @@ const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, curr
 
 }
 
+const showNotification = () => {
+    notifier.notify(
+        {
+            title: 'BeerCheck Update 🍺',
+            message: 'Új tételek — JSON frissítve!',
+            icon: beerIconPath, // opcionális, pl. egy ikon
+            wait: true       // true → kattintásra eseményt kapunk
+        },
+        function (err, response, metadata) {
+            if (err) console.error(err);
+        }
+    );
+};
+
 const matchResults = (prevResults, currentResults) => {
         const prevResultsIds = prevResults.map(({id}) => id);
         const currentResultsIds = currentResults.map(({id}) => id);
@@ -117,9 +138,10 @@ const matchResults = (prevResults, currentResults) => {
         removedItems.length && console.log('The following items are removed:', removedItems);
         addedItems.length && console.log('The following items are added:', addedItems);
         itemsWithPriceChange.length && console.log('The price of the following items has changed:', itemsWithPriceChange);
-        newOutOfStockItems.length && console.log('The following items are out of stock now:', newOutOfStockItems)
+        newOutOfStockItems.length && console.log('The following items are out of stock now:', newOutOfStockItems);
 
         writeResulsToFile(currentResults);
+        showNotification();
 };
 
 fetch(`${baseUrl}${fetchPath}`)
