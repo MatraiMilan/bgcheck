@@ -8,20 +8,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm start        # fetch and diff beer listings
 node index.js    # equivalent
 beercheck        # shell alias defined in ~/.bashrc
+node build.js    # regenerate dashboard/index.html from existing snapshots
 ```
 
-There are no tests and no build step.
+There are no tests. Open `dashboard/index.html` directly in a browser to view the dashboard.
 
 ## What this does
 
-A Node.js ESM script (`index.js`) that scrapes the clearance sale page of `beergourmet.hu`, compares the current listings against the last known state (`data/results.json`), and fires a desktop notification if anything changed.
+A Node.js ESM scraper (`index.js`) + static dashboard generator (`build.js`) for tracking beer prices on `beergourmet.hu`.
 
-Each run:
-1. Fetches the page and parses product items from `.item > .item-wrapper > a` elements using the `data-wnd_product_item_data` JSON attribute.
-2. Reads `data/results.json` (creates it on first run).
-3. Diffs previous vs. current: detects added items, removed items, price changes, and items that newly went out-of-stock (Hungarian: *Nincs raktáron*).
-4. If there is any diff, overwrites `data/results.json` with current results and sends a desktop notification via `node-notifier`.
-5. If nothing changed, exits silently.
+**Crawl flow (`index.js`):**
+1. Fetches the clearance page and parses product items from `.item > .item-wrapper > a` via the `data-wnd_product_item_data` JSON attribute. Deduplicates by product ID (the page contains duplicates).
+2. Reads the latest snapshot from `data/snapshots/` as previous state (empty array on first run).
+3. Diffs previous vs. current: added/removed items, price changes, newly out-of-stock (Hungarian: *Nincs raktáron*).
+4. If any diff: saves a timestamped snapshot to `data/snapshots/`, sends a desktop notification, and rebuilds the dashboard.
+
+**Dashboard flow (`build.js`):**
+- Reads all `data/snapshots/*.json` files in chronological order and aggregates per-product price/availability history.
+- Generates `dashboard/index.html` — a self-contained static file with Chart.js (CDN) sparklines per card and a click-through modal with full price history chart.
+- Run standalone with `node build.js` to regenerate without crawling.
 
 ## Scheduling
 
@@ -43,4 +48,4 @@ systemctl --user restart beercheck.timer    # restart timer
 | `itemDataAttribute` | HTML attribute name holding JSON product data |
 | `outOfStockText` | Hungarian string used to detect out-of-stock state |
 
-`data/results.json` is gitignored and acts as the persistent previous-state snapshot between runs.
+`data/` and `dashboard/` are both gitignored. `data/snapshots/` is the sole source of truth — the latest snapshot is the current state, older ones are the history. `dashboard/index.html` is generated output — open it directly in a browser.
