@@ -11,12 +11,12 @@ dashboard = sys.argv[2] if len(sys.argv) > 2 else ""
 Notify.init("BeerCheck")
 n = Notify.Notification.new("BeerCheck Update 🍺", "Kattints a dashboardhoz!", icon)
 
-def on_click(notification, action, data):
+def on_click(_notification, _action, _data):
     subprocess.Popen([dashboard])
     loop.quit()
 
 n.add_action("default", "Dashboard megnyitása", on_click, None)
-n.connect("closed", lambda n: loop.quit())
+n.connect("closed", lambda _: loop.quit())
 n.show()
 
 loop = GLib.MainLoop()
