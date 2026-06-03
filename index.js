@@ -1,6 +1,6 @@
-import notifier from 'node-notifier';
 import { parse } from "node-html-parser";
 import fs from "fs";
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -110,13 +110,16 @@ const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, curr
                 .map(prev => ({ ...prev, outOfStock: true }));
 };
 
+const notifyScriptPath = join(__dirname, 'notify.py');
+const openScriptPath = join(__dirname, 'open-dashboard.sh');
+
 const showNotification = () => {
-        notifier.notify({
-                title: 'BeerCheck Update 🍺',
-                message: 'Új tételek — JSON frissítve!',
-                icon: beerIconPath,
-                wait: true
-        }, (err) => { if (err) console.error(err); });
+        const proc = spawn('python3', [notifyScriptPath, beerIconPath, openScriptPath], {
+                detached: true,
+                stdio: 'ignore'
+        });
+        proc.unref();
+        proc.on('error', (err) => console.error('Notification error:', err));
 };
 
 const matchResults = (prevResults, currentResults) => {
