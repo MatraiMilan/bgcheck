@@ -113,7 +113,23 @@ const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, curr
 const notifyScriptPath = join(__dirname, 'notify.py');
 const dashboardHtmlPath = join(__dirname, 'dashboard', 'index.html');
 
+const pruneOldSnapshots = () => {
+        if (!fs.existsSync(snapshotsDir)) return;
+        const sixMonthsAgo = Date.now() - 6 * 30 * 24 * 60 * 60 * 1000;
+        fs.readdirSync(snapshotsDir)
+                .filter(f => f.endsWith('.json'))
+                .forEach(f => {
+                        const filePath = join(snapshotsDir, f);
+                        const lastModified = fs.statSync(filePath).mtimeMs;
+                        if (lastModified < sixMonthsAgo) {
+                                fs.unlinkSync(filePath);
+                                console.log(`Pruned old snapshot: ${f}`);
+                        }
+                });
+};
+
 const showNotification = () => {
+        if (process.env.CI) return;
         const proc = spawn('python3', [notifyScriptPath, beerIconPath, dashboardHtmlPath], {
                 detached: true,
                 stdio: 'ignore'
@@ -141,6 +157,7 @@ const matchResults = (prevResults, currentResults) => {
         if (itemsWithPriceChange.length) console.log('Price changed:', itemsWithPriceChange);
         if (newOutOfStockItems.length) console.log('Out of stock:', newOutOfStockItems);
 
+        pruneOldSnapshots();
         writeSnapshotToFile(currentResults);
         runBuild().then(showNotification);
 };
