@@ -39,6 +39,8 @@ header h1{font-size:1.3rem;font-weight:700}
 .badge{position:absolute;top:8px;right:8px;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase;margin:10px}
 .badge.in{background:#dcfce7;color:#15803d}
 .badge.out{background:#fee2e2;color:#b91c1c}
+.badge.new{background:#dbeafe;color:#1d4ed8}
+.badge.back{background:#ede9fe;color:#7c3aed}
 .card-body{padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;flex:1}
 .card-name{font-size:.9rem;font-weight:600;line-height:1.4;color:#2d2015;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-price-row{display:flex;align-items:center;gap:7px}
@@ -87,6 +89,11 @@ header h1{font-size:1.3rem;font-weight:700}
 .csel.open .csel-list{display:block}
 .csel-option{padding:8px 14px;cursor:pointer;font-size:.88rem;white-space:nowrap;transition:background .1s}
 .csel-option:hover{background:#fdf6ee}
+.sort-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:0;height:36px;border:1.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:.88rem;font-family:inherit;color:#1a1a1a;transition:border-color .15s,background .15s;white-space:nowrap;user-select:none;width:60px;flex-shrink:0}
+.sort-btn:hover{border-color:#d97706}
+.sort-btn.active{border-color:#d97706;background:#fdf6ee;color:#d97706}
+.sort-btn.active .sort-arrow{font-size:1.25rem;margin-bottom:0.25rem}
+.sort-arrow{font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:18px}
 .csel-option.selected{color:#d97706;font-weight:600}
 </style>
 </head>
@@ -115,14 +122,17 @@ header h1{font-size:1.3rem;font-weight:700}
       <input class="range-val" id="pmax-val" type="text">
     </div>
   </div>
+  <button type="button" class="sort-btn" id="sort-btn">
+    <span>Ár</span><span class="sort-arrow" id="sort-arrow">⇅</span>
+  </button>
   <div class="csel" id="csel">
     <button type="button" class="csel-btn" id="csel-btn">
       <span id="csel-label">Minden kategória</span>
-      <svg class="csel-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="csel-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <div class="csel-list" id="csel-list"></div>
   </div>
-  <input id="search" type="search" placeholder="Szűrés…">
+  <input id="search" type="search" placeholder="Keresés…">
 </div>
 
 <div class="grid" id="grid"></div>
@@ -145,19 +155,30 @@ const DATA = JSON.parse(document.getElementById('D').textContent);
 
 const fmt = p => Math.round(p).toLocaleString('hu-HU') + ' Ft';
 const fmtDate = iso => new Date(iso).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' });
-const fmtDT = iso => new Date(iso).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const fmtDT = iso => new Date(iso).toLocaleString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const escA = s => s.replace(/"/g,'&quot;');
 
 document.getElementById('meta').textContent = 'Generálva: ' + DATA.generatedAt;
 
 const all = Object.values(DATA.products);
-const inCount = all.filter(p => !p.history.at(-1).outOfStock).length;
-const outCount = all.length - inCount;
+const getState = p => {
+  const latest = p.history.at(-1);
+  if (latest.outOfStock) return 'out';
+  if (p.history.length === 1) return 'new';
+  if (p.history.at(-2).price === null) return 'back';
+  return 'in';
+};
+const inCount  = all.filter(p => getState(p) === 'in').length;
+const outCount = all.filter(p => getState(p) === 'out').length;
+const newCount = all.filter(p => getState(p) === 'new' || getState(p) === 'back').length;
 document.getElementById('total-count').textContent = 'Termékek: ' + all.length;
+const statCheck = (id, label, count) => count === 0 ? '' :
+  '<label class="stat-check"><input type="checkbox" id="' + id + '" checked> ' + label + ': <strong>' + count + '</strong></label>';
 document.getElementById('stats').innerHTML =
-  '<label class="stat-check"><input type="checkbox" id="chk-in" checked> Készleten: <strong>' + inCount + '</strong></label>' +
-  '<label class="stat-check"><input type="checkbox" id="chk-out" checked> Elfogyott: <strong>' + outCount + '</strong></label>';
+  statCheck('chk-in', 'Készleten', inCount) +
+  statCheck('chk-out', 'Elfogyott', outCount) +
+  statCheck('chk-new', 'Új', newCount);
 
 // Price range init
 const allPrices = all.map(p => p.history.at(-1).price);
@@ -221,16 +242,18 @@ document.addEventListener('click', () => csel.classList.remove('open'));
 const applyFilters = () => {
   const q = document.getElementById('search').value.toLowerCase().trim();
   const lo = parseInt(pmin.value), hi = parseInt(pmax.value);
-  const showIn  = document.getElementById('chk-in').checked;
-  const showOut = document.getElementById('chk-out').checked;
+  const showIn  = document.getElementById('chk-in')?.checked ?? true;
+  const showOut = document.getElementById('chk-out')?.checked ?? true;
+  const showNew = document.getElementById('chk-new')?.checked ?? true;
   const section = cselValue;
   document.querySelectorAll('.card').forEach(card => {
     const p = DATA.products[card.dataset.id];
     const latest = p.history.at(-1);
+    const state = card.dataset.state;
     const hidden =
       (q && !card.dataset.name.includes(q)) ||
       (latest.price < lo || latest.price > hi) ||
-      (latest.outOfStock ? !showOut : !showIn) ||
+      (state === 'out' ? !showOut : state === 'in' ? !showIn : !showNew) ||
       (section && p.section !== section);
     card.classList.toggle('hidden', hidden);
   });
@@ -261,16 +284,44 @@ pmaxVal.addEventListener('input', () => {
 });
 pmaxVal.addEventListener('blur', () => { pmaxVal.value = fmt(parseInt(pmax.value)); });
 
-document.getElementById('chk-in').addEventListener('change', applyFilters);
-document.getElementById('chk-out').addEventListener('change', applyFilters);
+document.getElementById('chk-in')?.addEventListener('change', applyFilters);
+document.getElementById('chk-out')?.addEventListener('change', applyFilters);
+document.getElementById('chk-new')?.addEventListener('change', applyFilters);
+
+// Price sort
+const sortStates = [null, 'asc', 'desc'];
+const sortArrows = { null: '⇅', asc: '↑', desc: '↓' };
+let sortIdx = 0;
+const sortBtn = document.getElementById('sort-btn');
+const sortArrow = document.getElementById('sort-arrow');
+const applySort = () => {
+  const state = sortStates[sortIdx];
+  sortArrow.textContent = sortArrows[state];
+  sortBtn.classList.toggle('active', state !== null);
+  const cards = [...document.querySelectorAll('.card')];
+  const grid = document.getElementById('grid');
+  if (!state) {
+    cards.sort((a, b) => a.dataset.origIdx - b.dataset.origIdx);
+  } else {
+    cards.sort((a, b) => {
+      const pa = DATA.products[a.dataset.id].history.at(-1).price;
+      const pb = DATA.products[b.dataset.id].history.at(-1).price;
+      return state === 'asc' ? pa - pb : pb - pa;
+    });
+  }
+  cards.forEach(c => grid.appendChild(c));
+};
+sortBtn.addEventListener('click', () => { sortIdx = (sortIdx + 1) % sortStates.length; applySort(); });
 
 const grid = document.getElementById('grid');
-Object.entries(DATA.products).forEach(([id, p]) => {
+Object.entries(DATA.products).forEach(([id, p], origIdx) => {
   const latest = p.history.at(-1);
   const prev = p.history.length > 1 ? p.history.at(-2) : null;
-  const diff = prev ? latest.price - prev.price : 0;
+  const diff = (prev && prev.price !== null) ? latest.price - prev.price : 0;
   const changeHtml = diff > 0 ? '<span class="change up" title="+' + fmt(diff) + '">&#9650;</span>'
     : diff < 0 ? '<span class="change down" title="-' + fmt(-diff) + '">&#9660;</span>' : '';
+  const state = latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.price === null) ? 'back' : 'in';
+  const badgeText = { in: 'Készleten', out: 'Elfogyott', new: 'Új', back: 'Újra elérhető' }[state];
 
   const imgHtml = p.image
     ? '<div class="card-img-inner"><img src="' + escA(p.image) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';this.nextSibling.style.display=\\'flex\\'"></div>'
@@ -281,10 +332,12 @@ Object.entries(DATA.products).forEach(([id, p]) => {
   card.className = 'card';
   card.dataset.id = id;
   card.dataset.name = p.name.toLowerCase();
+  card.dataset.state = state;
+  card.dataset.origIdx = origIdx;
   const bgStyle = p.bgColor ? ' style="background:' + p.bgColor + '"' : '';
   card.innerHTML =
     '<div class="card-img"' + bgStyle + '>' + imgHtml +
-      '<span class="badge ' + (latest.outOfStock ? 'out' : 'in') + '">' + (latest.outOfStock ? 'Elfogyott' : 'Keszleten') + '</span>' +
+      '<span class="badge ' + state + '">' + badgeText + '</span>' +
     '</div>' +
     '<div class="card-body">' +
       '<div class="card-name">' + esc(p.name) + '</div>' +
@@ -309,7 +362,7 @@ const sparkObs = new IntersectionObserver(entries => {
       type: 'line',
       data: {
         labels: h.map(x => x.t),
-        datasets: [{ data: h.map(x => x.price), borderColor: '#d97706', borderWidth: 1.5,
+        datasets: [{ data: h.map(x => x.price), spanGaps: false, borderColor: '#d97706', borderWidth: 1.5,
           pointRadius: h.map(x => x.outOfStock ? 3 : 0),
           pointBackgroundColor: h.map(x => x.outOfStock ? '#ef4444' : '#d97706'),
           fill: true, backgroundColor: 'rgba(217,119,6,.08)', tension: 0.4 }]
@@ -347,7 +400,8 @@ grid.addEventListener('click', e => {
 
   const latest = p.history.at(-1);
   const prices = p.history.map(h => h.price);
-  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  const realPrices = prices.filter(v => v !== null);
+  const minP = Math.min(...realPrices), maxP = Math.max(...realPrices);
 
   document.getElementById('modal-img').innerHTML = p.image
     ? '<img class="modal-img" src="' + escA(p.image) + '" alt="" onerror="this.style.display=\\'none\\'">'
@@ -355,17 +409,23 @@ grid.addEventListener('click', e => {
 
   document.getElementById('modal-info').innerHTML =
     '<h2>' + esc(p.name) + '</h2>' +
-    '<a href="' + escA(p.url) + '" target="_blank" rel="noopener">Megnyitas a weboldalon &rarr;</a>';
+    '<a href="' + escA(p.url) + '" target="_blank" rel="noopener">Megnyitás a weboldalon &rarr;</a>';
+
+  const modalState = card.dataset.state;
+  const statusHtml = {
+    in:   '<span style="color:#15803d;font-weight:600">Készleten</span>',
+    out:  '<span style="color:#b91c1c;font-weight:600">Elfogyott</span>',
+    new:  '<span style="color:#1d4ed8;font-weight:600">Új</span>',
+    back: '<span style="color:#7c3aed;font-weight:600">Újra elérhető</span>',
+  }[modalState];
 
   document.getElementById('modal-kpis').innerHTML =
-    kpi('Jelenlegi ar', fmt(latest.price)) +
-    kpi('Min ar', fmt(minP)) +
-    kpi('Max ar', fmt(maxP)) +
-    kpi('Elso adat', fmtDate(p.history[0].t)) +
-    kpi('Utolso adat', fmtDate(latest.t)) +
-    kpi('Statusz', latest.outOfStock
-      ? '<span style="color:#b91c1c;font-weight:600">Elfogyott</span>'
-      : '<span style="color:#15803d;font-weight:600">Keszleten</span>');
+    kpi('Jelenlegi ár', fmt(latest.price)) +
+    kpi('Min. ár', fmt(minP)) +
+    kpi('Max. ár', fmt(maxP)) +
+    kpi('Első adat', fmtDate(p.history[0].t)) +
+    kpi('Utolsó adat', fmtDate(latest.t)) +
+    kpi('Státusz', statusHtml);
 
   if (mChart) mChart.destroy();
   const ctx = document.getElementById('mchart');
@@ -375,7 +435,7 @@ grid.addEventListener('click', e => {
       data: {
         labels: p.history.map(h => fmtDT(h.t)),
         datasets: [{
-          label: 'Ar', data: prices,
+          label: 'Ar', data: prices, spanGaps: false,
           borderColor: '#d97706', borderWidth: 2,
           pointRadius: p.history.map(h => h.outOfStock ? 5 : 3),
           pointBackgroundColor: p.history.map(h => h.outOfStock ? '#ef4444' : '#d97706'),
@@ -453,6 +513,8 @@ export const build = async () => {
         const snapshots = files.map(f => JSON.parse(fs.readFileSync(join(snapshotsDir, f), 'utf-8')));
 
         const products = {};
+        const seenInSnap = new Map(snapshots.map(s => [s.timestamp, new Set(s.products.map(p => String(p.id)))]));
+
         for (const snap of snapshots) {
                 for (const p of snap.products) {
                         if (!products[p.id]) {
@@ -466,6 +528,12 @@ export const build = async () => {
                                 outOfStock: p.outOfStock
                         });
                 }
+                // Insert null for products that appeared before but are missing in this snapshot
+                for (const [id, p] of Object.entries(products)) {
+                        if (!seenInSnap.get(snap.timestamp).has(id)) {
+                                p.history.push({ t: snap.timestamp, price: null, outOfStock: false });
+                        }
+                }
         }
 
         console.log('Computing image colors...');
@@ -478,7 +546,11 @@ export const build = async () => {
         const generatedAt = new Date().toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' });
         const lastCrawl = snapshots[snapshots.length - 1].timestamp;
 
-        const safeJson = JSON.stringify({ generatedAt, lastCrawl, products })
+        const visibleProducts = Object.fromEntries(
+                Object.entries(products).filter(([_, p]) => p.history.at(-1).t === lastCrawl)
+        );
+
+        const safeJson = JSON.stringify({ generatedAt, lastCrawl, products: visibleProducts })
                 .replace(/<\/script>/gi, '<\\/script>');
 
         if (!fs.existsSync(dashboardDir)) fs.mkdirSync(dashboardDir);
