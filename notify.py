@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 import gi
 gi.require_version('Notify', '0.7')
-from gi.repository import Notify, GLib
-import subprocess
+gi.require_version('Gio', '2.0')
+from gi.repository import Notify, GLib, Gio
+import os
 import sys
 
 icon = sys.argv[1] if len(sys.argv) > 1 else ""
-dashboard = sys.argv[2] if len(sys.argv) > 2 else ""
+dashboard_html = sys.argv[2] if len(sys.argv) > 2 else ""
 
 Notify.init("BeerCheck")
 n = Notify.Notification.new("BeerCheck Update 🍺", "Kattints a dashboardhoz!", icon)
 
 def on_click(_notification, _action, _data):
-    subprocess.Popen([dashboard])
+    uri = "file://" + os.path.abspath(dashboard_html)
+    Gio.AppInfo.launch_default_for_uri(uri, None)
     loop.quit()
 
 n.add_action("default", "Dashboard megnyitása", on_click, None)

@@ -81,7 +81,7 @@ const writeSnapshotToFile = (results) => {
 };
 
 const runBuild = () => {
-        import('./build.js').then(({ build }) => build()).catch(console.error);
+        return import('./build.js').then(({ build }) => build()).catch(console.error);
 };
 
 const priceChangeCheck = (prevResults, prevResultsIds, currentResults, currentResultsIds) => {
@@ -111,10 +111,10 @@ const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, curr
 };
 
 const notifyScriptPath = join(__dirname, 'notify.py');
-const openScriptPath = join(__dirname, 'open-dashboard.sh');
+const dashboardHtmlPath = join(__dirname, 'dashboard', 'index.html');
 
 const showNotification = () => {
-        const proc = spawn('python3', [notifyScriptPath, beerIconPath, openScriptPath], {
+        const proc = spawn('python3', [notifyScriptPath, beerIconPath, dashboardHtmlPath], {
                 detached: true,
                 stdio: 'ignore'
         });
@@ -142,8 +142,7 @@ const matchResults = (prevResults, currentResults) => {
         if (newOutOfStockItems.length) console.log('Out of stock:', newOutOfStockItems);
 
         writeSnapshotToFile(currentResults);
-        showNotification();
-        runBuild();
+        runBuild().then(showNotification);
 };
 
 fetch(`${baseUrl}${fetchPath}`)
