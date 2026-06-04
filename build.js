@@ -41,9 +41,9 @@ header h1{font-size:1.3rem;font-weight:700}
 .badge.out{background:#fee2e2;color:#b91c1c}
 .card-body{padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;flex:1}
 .card-name{font-size:.9rem;font-weight:600;line-height:1.4;color:#2d2015;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card-price-row{display:flex;align-items:baseline;gap:7px}
+.card-price-row{display:flex;align-items:center;gap:7px}
 .card-price{font-size:1.15rem;font-weight:700;color:#d97706}
-.change{font-size:.72rem;font-weight:600}
+.change{font-size:1.15rem;font-weight:700;line-height:1}
 .change.up{color:#dc2626}
 .change.down{color:#16a34a}
 .sparkline-wrap{height:90px;padding:8px 13px 12px}
@@ -269,8 +269,8 @@ Object.entries(DATA.products).forEach(([id, p]) => {
   const latest = p.history.at(-1);
   const prev = p.history.length > 1 ? p.history.at(-2) : null;
   const diff = prev ? latest.price - prev.price : 0;
-  const changeHtml = diff > 0 ? '<span class="change up">&#8593; ' + fmt(diff) + '</span>'
-    : diff < 0 ? '<span class="change down">&#8595; ' + fmt(-diff) + '</span>' : '';
+  const changeHtml = diff > 0 ? '<span class="change up" title="+' + fmt(diff) + '">&#9650;</span>'
+    : diff < 0 ? '<span class="change down" title="-' + fmt(-diff) + '">&#9660;</span>' : '';
 
   const imgHtml = p.image
     ? '<div class="card-img-inner"><img src="' + escA(p.image) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';this.nextSibling.style.display=\\'flex\\'"></div>'
