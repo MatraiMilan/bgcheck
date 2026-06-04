@@ -28,25 +28,26 @@ header h1{font-size:1.3rem;font-weight:700}
 #search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s}
 #search:focus{border-color:#d97706}
 #search::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;cursor:pointer;width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M1 1l10 10M11 1L1 11' stroke='%23d97706' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center/contain}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;padding:36px 80px;max-width:1400px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(3,330px);gap:46px;padding:46px 80px 36px;max-width:1400px;margin:0 auto}
 .card{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s}
 .card:hover{box-shadow:0 5px 18px rgba(0,0,0,.26);transform:translateY(-2px)}
 .card.hidden{display:none}
-.card-img{height:140px;background:#fdf6ee;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0}
-.card-img img{width:100%;height:100%;object-fit:contain;padding:10px}
+.card-img{height:330px;aspect-ratio:1/1;background:#fdf6ee;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0}
+.card-img-inner{width:calc(100% - 20px);height:calc(100% - 20px);border-radius:10px 10px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-img img{width:100%;height:100%;object-fit:contain}
 .fallback{font-size:3.2rem;opacity:.22}
-.badge{position:absolute;top:8px;right:8px;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase}
+.badge{position:absolute;top:8px;right:8px;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase;margin:10px}
 .badge.in{background:#dcfce7;color:#15803d}
 .badge.out{background:#fee2e2;color:#b91c1c}
 .card-body{padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;flex:1}
-.card-name{font-size:.78rem;font-weight:600;line-height:1.4;color:#2d2015;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-name{font-size:.9rem;font-weight:600;line-height:1.4;color:#2d2015;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-price-row{display:flex;align-items:baseline;gap:7px}
 .card-price{font-size:1.15rem;font-weight:700;color:#d97706}
 .change{font-size:.72rem;font-weight:600}
 .change.up{color:#dc2626}
 .change.down{color:#16a34a}
-.sparkline-wrap{height:60px;padding:8px 13px 12px}
-.sparkline-wrap canvas{width:100%!important;height:48px!important}
+.sparkline-wrap{height:90px;padding:8px 13px 12px}
+.sparkline-wrap canvas{width:100%!important;height:74px!important}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
 .overlay.open{display:flex}
 .modal{background:#fff;border-radius:12px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;padding:22px;position:relative}
@@ -272,7 +273,7 @@ Object.entries(DATA.products).forEach(([id, p]) => {
     : diff < 0 ? '<span class="change down">&#8595; ' + fmt(-diff) + '</span>' : '';
 
   const imgHtml = p.image
-    ? '<img src="' + escA(p.image) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';this.nextSibling.style.display=\\'flex\\'">'
+    ? '<div class="card-img-inner"><img src="' + escA(p.image) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';this.nextSibling.style.display=\\'flex\\'"></div>'
       + '<span class="fallback" style="display:none">&#x1F37A;</span>'
     : '<span class="fallback">&#x1F37A;</span>';
 
