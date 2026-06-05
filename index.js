@@ -71,10 +71,16 @@ const readLatestSnapshot = () => {
         return JSON.parse(fs.readFileSync(join(snapshotsDir, files.at(-1)))).products;
 };
 
+const toBudapestFilename = (date) => new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'Europe/Budapest',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+}).format(date).replace(' ', '_').replace(':', '-');
+
 const writeSnapshotToFile = (results) => {
-        const timestamp = new Date().toISOString();
-        const filename = timestamp.replace(/[:.]/g, '-') + '.json';
-        fs.writeFileSync(join(snapshotsDir, filename), JSON.stringify({ timestamp, products: results }));
+        const now = new Date();
+        const filename = toBudapestFilename(now) + '.json';
+        fs.writeFileSync(join(snapshotsDir, filename), JSON.stringify({ timestamp: now.toISOString(), products: results }));
         console.log(`Snapshot saved: data/snapshots/${filename}`);
 };
 
