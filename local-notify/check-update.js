@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const REPO = 'MatraiMilan/bgcheck';
-const NETLIFY_URL = 'https://bgcheck.netlify.app';
+const DASHBOARD_URL = 'https://matraimilan.github.io/bgcheck/';
 const SHA_FILE = join(__dirname, '.bgcheck_last_sha');
 const BEER_ICON = join(__dirname, '..', 'assets', 'beer.png');
 const NOTIFY_SCRIPT = join(__dirname, 'notify.py');
@@ -47,7 +47,7 @@ const lastSha = fs.existsSync(SHA_FILE) ? fs.readFileSync(SHA_FILE, 'utf8').trim
 if (latestAuthor === 'github-actions[bot]' && latestSha !== lastSha) {
     fs.writeFileSync(SHA_FILE, latestSha);
     await new Promise((resolve) => {
-        const proc = spawn('/usr/bin/python3', [NOTIFY_SCRIPT, BEER_ICON, NETLIFY_URL], {
+        const proc = spawn('/usr/bin/python3', [NOTIFY_SCRIPT, BEER_ICON, DASHBOARD_URL], {
             stdio: 'ignore'
         });
         proc.on('error', (err) => console.error('Notification error:', err));
