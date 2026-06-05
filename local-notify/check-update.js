@@ -46,10 +46,11 @@ const lastSha = fs.existsSync(SHA_FILE) ? fs.readFileSync(SHA_FILE, 'utf8').trim
 
 if (latestAuthor === 'github-actions[bot]' && latestSha !== lastSha) {
     fs.writeFileSync(SHA_FILE, latestSha);
-    const proc = spawn('python3', [NOTIFY_SCRIPT, BEER_ICON, NETLIFY_URL], {
-        detached: true,
-        stdio: 'ignore'
+    await new Promise((resolve) => {
+        const proc = spawn('/usr/bin/python3', [NOTIFY_SCRIPT, BEER_ICON, NETLIFY_URL], {
+            stdio: 'ignore'
+        });
+        proc.on('error', (err) => console.error('Notification error:', err));
+        proc.on('close', resolve);
     });
-    proc.unref();
-    proc.on('error', (err) => console.error('Notification error:', err));
 }
