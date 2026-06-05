@@ -25,14 +25,14 @@ header h1{font-size:1.3rem;font-weight:700}
 .stats{display:flex;gap:20px;flex-wrap:wrap}
 .stat{font-size:.83rem;color:#666}
 .stat strong{color:#1a1a1a;font-weight:600}
-#search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s}
+#search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s;margin-left:auto}
 #search:focus{border-color:#d97706}
 #search::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;cursor:pointer;width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M1 1l10 10M11 1L1 11' stroke='%23d97706' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center/contain}
-.grid{display:grid;grid-template-columns:repeat(3,330px);gap:46px;padding:46px 80px 36px;max-width:1400px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px;padding:28px 32px 28px;max-width:1400px;margin:0 auto}
 .card{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s}
 .card:hover{box-shadow:0 5px 18px rgba(0,0,0,.26);transform:translateY(-2px)}
 .card.hidden{display:none}
-.card-img{height:330px;aspect-ratio:1/1;background:#fdf6ee;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0}
+.card-img{aspect-ratio:1/1;background:#fdf6ee;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0}
 .card-img-inner{width:calc(100% - 20px);height:calc(100% - 20px);border-radius:10px 10px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .card-img img{width:100%;height:100%;object-fit:contain}
 .fallback{font-size:3.2rem;opacity:.22}
@@ -95,6 +95,25 @@ header h1{font-size:1.3rem;font-weight:700}
 .sort-btn.active .sort-arrow{font-size:1.25rem;margin-bottom:0.25rem}
 .sort-arrow{font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:18px}
 .csel-option.selected{color:#d97706;font-weight:600}
+.price-sort-group{display:flex;align-items:center;gap:24px;flex-shrink:0}
+.toolbar-chevron{display:none;position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);width:48px;height:24px;background:#fff;border:1px solid #ddd0b8;border-top:none;border-radius:0 0 100px 100px;cursor:pointer;z-index:11;-webkit-tap-highlight-color:transparent;user-select:none}
+.toolbar-chevron::after{content:'';position:absolute;top:3px;left:50%;width:9px;height:9px;border-right:1.5px solid #1a1a1a;border-bottom:1.5px solid #1a1a1a;transform:translateX(-50%) rotate(45deg);transition:transform .4s ease,top .4s ease}
+.toolbar-chevron.active::after{transform:translateX(-50%) rotate(225deg);top:7px}
+.toolbar-filters{display:contents}
+@media(max-width:725px){
+  .toolbar{padding:8px 12px 8px;gap:12px;align-items:center}
+  .toolbar-chevron{display:block}
+  .toolbar-filters{display:flex;flex-direction:column;gap:18px;width:100%;max-height:0;overflow:hidden;transition:max-height .5s ease,padding-top .5s ease;padding-top:0}
+  .toolbar-filters.open{max-height:280px;padding-top:14px}
+  .stats{width:100%;justify-content:center}
+  .price-sort-group{width:100%;flex-shrink:1}
+  .price-filter{min-width:0;flex:1;max-width:none}
+  .csel{width:100%}
+  .csel-btn{width:100%}
+  .csel-list{width:100%}
+  #search{width:100%}
+  .grid{padding:34px 14px 14px;gap:14px}
+}
 </style>
 </head>
 <body>
@@ -110,29 +129,34 @@ header h1{font-size:1.3rem;font-weight:700}
 
 <div class="toolbar">
   <div class="stats" id="stats"></div>
-  <div class="price-filter">
-    <div class="range-wrap">
-      <div class="range-track"><div class="range-fill" id="rf"></div></div>
-      <input type="range" id="pmin" step="1">
-      <input type="range" id="pmax" step="1">
+  <div class="toolbar-filters" id="toolbar-filters">
+    <div class="price-sort-group">
+      <div class="price-filter">
+        <div class="range-wrap">
+          <div class="range-track"><div class="range-fill" id="rf"></div></div>
+          <input type="range" id="pmin" step="1">
+          <input type="range" id="pmax" step="1">
+        </div>
+        <div class="range-vals">
+          <input class="range-val" id="pmin-val" type="text">
+          <span class="range-sep">—</span>
+          <input class="range-val" id="pmax-val" type="text">
+        </div>
+      </div>
+      <button type="button" class="sort-btn" id="sort-btn">
+        <span>Ár</span><span class="sort-arrow" id="sort-arrow">⇅</span>
+      </button>
     </div>
-    <div class="range-vals">
-      <input class="range-val" id="pmin-val" type="text">
-      <span class="range-sep">—</span>
-      <input class="range-val" id="pmax-val" type="text">
+    <div class="csel" id="csel">
+      <button type="button" class="csel-btn" id="csel-btn">
+        <span id="csel-label">Minden kategória</span>
+        <svg class="csel-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="csel-list" id="csel-list"></div>
     </div>
+    <input id="search" type="search" placeholder="Keresés…">
   </div>
-  <button type="button" class="sort-btn" id="sort-btn">
-    <span>Ár</span><span class="sort-arrow" id="sort-arrow">⇅</span>
-  </button>
-  <div class="csel" id="csel">
-    <button type="button" class="csel-btn" id="csel-btn">
-      <span id="csel-label">Minden kategória</span>
-      <svg class="csel-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-    <div class="csel-list" id="csel-list"></div>
-  </div>
-  <input id="search" type="search" placeholder="Keresés…">
+  <div class="toolbar-chevron" id="toolbar-chevron"></div>
 </div>
 
 <div class="grid" id="grid"></div>
@@ -465,6 +489,21 @@ grid.addEventListener('click', e => {
 function kpi(label, val) {
   return '<div class="kpi">' + label + ': <strong>' + val + '</strong></div>';
 }
+
+const toolbarChevron = document.getElementById('toolbar-chevron');
+const toolbarFilters = document.getElementById('toolbar-filters');
+toolbarFilters.addEventListener('transitionend', e => {
+  if (e.propertyName === 'max-height' && toolbarFilters.classList.contains('open')) {
+    toolbarFilters.style.overflow = 'visible';
+  }
+});
+toolbarChevron.addEventListener('click', () => {
+  if (toolbarFilters.classList.contains('open')) {
+    toolbarFilters.style.overflow = 'hidden';
+  }
+  const open = toolbarFilters.classList.toggle('open');
+  toolbarChevron.classList.toggle('active', open);
+});
 <\/script>
 </body>
 </html>`;
