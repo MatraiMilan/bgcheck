@@ -2,7 +2,7 @@
 
 Hourly beer price tracker for [beergourmet.hu](https://www.beergourmet.hu) clearance deals. Scrapes product listings, diffs against the previous snapshot, and publishes a dashboard to GitHub Pages.
 
-**Live dashboard:** https://matraimilan.github.io/bgcheck/
+**Live dashboard:** https://matraimilan.github.io/bgcheck
 
 ## How it works
 

@@ -10,7 +10,7 @@ node index.js    # equivalent
 node build.js    # regenerate dashboard/index.html from existing snapshots
 ```
 
-There are no tests. The dashboard is hosted at https://matraimilan.github.io/bgcheck/ (auto-deployed via GitHub Actions to GitHub Pages).
+There are no tests. The dashboard is hosted at https://matraimilan.github.io/bgcheck (auto-deployed via GitHub Actions to GitHub Pages).
 
 ## What this does
 
@@ -59,7 +59,7 @@ Requires a GitHub fine-grained personal access token with `Contents: Read-only` 
 node ~/git/bgcheck/local-notify/check-update.js
 
 # Test the notification directly
-python3 ~/git/bgcheck/local-notify/notify.py ~/git/bgcheck/assets/beer.png https://matraimilan.github.io/bgcheck/ &
+python3 ~/git/bgcheck/local-notify/notify.py ~/git/bgcheck/assets/beer.png https://matraimilan.github.io/bgcheck &
 ```
 
 The local systemd timer (once set up) runs `check-update.js` every 30 minutes.

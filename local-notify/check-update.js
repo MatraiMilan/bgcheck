@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const REPO = 'MatraiMilan/bgcheck';
-const DASHBOARD_URL = 'https://matraimilan.github.io/bgcheck/';
+const DASHBOARD_URL = 'https://matraimilan.github.io/bgcheck';
 const SHA_FILE = join(__dirname, '.bgcheck_last_sha');
 const BEER_ICON = join(__dirname, '..', 'assets', 'beer.png');
 const NOTIFY_SCRIPT = join(__dirname, 'notify.py');
