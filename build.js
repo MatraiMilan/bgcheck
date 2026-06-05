@@ -68,6 +68,8 @@ header h1{font-size:1.3rem;font-weight:700}
 .modal-chart{position:relative;height:260px}
 .stat-check{font-size:.83rem;color:#666;display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
 .stat-check input[type=checkbox]{accent-color:#d97706;cursor:pointer;width:14px;height:14px;flex-shrink:0}
+.stat-check.disabled{opacity:.35;cursor:not-allowed}
+.stat-check.disabled input[type=checkbox]{cursor:not-allowed}
 .price-filter{display:flex;flex-direction:column;gap:7px;min-width:200px;max-width:280px}
 .range-wrap{position:relative;height:28px}
 .range-track{position:absolute;top:50%;transform:translateY(-50%);height:4px;width:100%;background:#ddd0b8;border-radius:2px;pointer-events:none}
@@ -100,6 +102,7 @@ header h1{font-size:1.3rem;font-weight:700}
 .toolbar-chevron::after{content:'';position:absolute;top:3px;left:50%;width:9px;height:9px;border-right:1.5px solid #1a1a1a;border-bottom:1.5px solid #1a1a1a;transform:translateX(-50%) rotate(45deg);transition:transform .4s ease,top .4s ease}
 .toolbar-chevron.active::after{transform:translateX(-50%) rotate(225deg);top:7px}
 .toolbar-filters{display:contents}
+@media(min-width:1178px){#search{margin-left:0}}
 @media(max-width:725px){
   .toolbar{padding:8px 12px 8px;gap:12px;align-items:center}
   .toolbar-chevron{display:block}
@@ -197,8 +200,8 @@ const inCount  = all.filter(p => getState(p) === 'in').length;
 const outCount = all.filter(p => getState(p) === 'out').length;
 const newCount = all.filter(p => getState(p) === 'new' || getState(p) === 'back').length;
 document.getElementById('total-count').textContent = 'Termékek: ' + all.length;
-const statCheck = (id, label, count) => count === 0 ? '' :
-  '<label class="stat-check"><input type="checkbox" id="' + id + '" checked> ' + label + ': <strong>' + count + '</strong></label>';
+const statCheck = (id, label, count) =>
+  '<label class="stat-check' + (count === 0 ? ' disabled' : '') + '"><input type="checkbox" id="' + id + '"' + (count === 0 ? ' disabled' : ' checked') + '> ' + label + ': <strong>' + count + '</strong></label>';
 document.getElementById('stats').innerHTML =
   statCheck('chk-in', 'Készleten', inCount) +
   statCheck('chk-out', 'Elfogyott', outCount) +
