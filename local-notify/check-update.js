@@ -12,23 +12,8 @@ const SHA_FILE = join(__dirname, '.bgcheck_last_sha');
 const BEER_ICON = join(__dirname, '..', 'assets', 'beer.png');
 const NOTIFY_SCRIPT = join(__dirname, 'notify.py');
 
-const envPath = join(__dirname, '.env');
-if (fs.existsSync(envPath)) {
-    fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
-        const [key, ...rest] = line.split('=');
-        if (key && rest.length) process.env[key.trim()] = rest.join('=').trim();
-    });
-}
-
-const token = process.env.BGCHECK_GITHUB_TOKEN;
-if (!token) {
-    console.error('BGCHECK_GITHUB_TOKEN not set');
-    process.exit(1);
-}
-
 const response = await fetch(`https://api.github.com/repos/${REPO}/commits?per_page=1`, {
     headers: {
-        'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github+json',
     }
 });

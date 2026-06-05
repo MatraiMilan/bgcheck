@@ -21,10 +21,4 @@ node build.js    # rebuild dashboard from existing snapshots
 
 ### Desktop notifications
 
-Copy `local-notify/.env.example` to `local-notify/.env` and add a GitHub fine-grained personal access token with `Contents: Read-only` on this repo:
-
-```
-BGCHECK_GITHUB_TOKEN=github_pat_your_token_here
-```
-
-Then run `node local-notify/check-update.js` — if there's a new commit from the bot, a desktop notification appears linking to the dashboard.
+Run `node local-notify/check-update.js` — if there's a new commit from the bot, a desktop notification appears linking to the dashboard.

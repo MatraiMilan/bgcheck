@@ -52,8 +52,6 @@ The local systemd timer is disabled — GitHub Actions handles crawling.
 
 `local-notify/check-update.js` polls the GitHub API for new commits by `github-actions[bot]`. If a new commit is found, it sends a desktop notification (via `local-notify/notify.py`) that opens the dashboard on click.
 
-Requires a GitHub fine-grained personal access token with `Contents: Read-only` on this repo. Copy `local-notify/.env.example` to `local-notify/.env` and fill in the token.
-
 ```bash
 # Test manually
 node ~/git/bgcheck/local-notify/check-update.js
