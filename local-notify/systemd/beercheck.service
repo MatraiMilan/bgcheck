@@ -1,0 +1,6 @@
+[Unit]
+Description=BeerCheck – check for new GitHub Actions commit and notify
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c ". $HOME/.nvm/nvm.sh && node $HOME/git/bgcheck/local-notify/check-update.js"

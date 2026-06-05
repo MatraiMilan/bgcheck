@@ -52,6 +52,15 @@ GitHub Actions handles crawling. The local `beercheck.timer` systemd timer runs 
 
 `local-notify/check-update.js` polls the GitHub API for new commits by `github-actions[bot]`. If a new commit is found, it sends a desktop notification (via `local-notify/notify.py`) that opens the dashboard on click.
 
+The systemd unit files are stored in `local-notify/systemd/`. To install:
+
+```bash
+cp local-notify/systemd/beercheck.service ~/.config/systemd/user/
+cp local-notify/systemd/beercheck.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now beercheck.timer
+```
+
 ```bash
 # Test the notification directly (without crawl)
 python3 ~/git/bgcheck/local-notify/notify.py ~/git/bgcheck/assets/beer.png https://matraimilan.github.io/bgcheck &

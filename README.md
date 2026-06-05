@@ -22,3 +22,12 @@ node build.js    # rebuild dashboard from existing snapshots
 ### Desktop notifications
 
 Run `node local-notify/check-update.js` — if there's a new commit from the bot, a desktop notification appears linking to the dashboard.
+
+To run this automatically, install the included systemd timer:
+
+```bash
+cp local-notify/systemd/beercheck.service ~/.config/systemd/user/
+cp local-notify/systemd/beercheck.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now beercheck.timer
+```
