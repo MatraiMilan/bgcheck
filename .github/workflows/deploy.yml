@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+  workflow_run:
+    workflows: ["Crawl"]
+    types:
+      - completed
+  workflow_dispatch:
 
 permissions:
   pages: write
@@ -13,7 +18,28 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Check if crawl committed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            SINCE="${{ github.event.workflow_run.created_at }}"
+            COUNT=$(gh api "repos/${{ github.repository }}/commits?since=$SINCE" \
+              | jq '[.[] | select(.author.login == "github-actions[bot]")] | length')
+            echo "should_deploy=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   deploy:
+    needs: check
+    if: needs.check.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
