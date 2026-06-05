@@ -1,2 +1,4 @@
 node_modules
 .idea
+local-notify/.bgcheck_last_sha
+local-notify/.env

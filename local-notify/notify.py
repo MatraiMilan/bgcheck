@@ -13,7 +13,7 @@ Notify.init("BeerCheck")
 n = Notify.Notification.new("BeerCheck Update 🍺", "Kattints a dashboardhoz!", icon)
 
 def on_click(_notification, _action, _data):
-    uri = "file://" + os.path.abspath(dashboard_html)
+    uri = dashboard_html if dashboard_html.startswith("http") else "file://" + os.path.abspath(dashboard_html)
     Gio.AppInfo.launch_default_for_uri(uri, None)
     loop.quit()
 

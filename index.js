@@ -1,6 +1,5 @@
 import { parse } from "node-html-parser";
 import fs from "fs";
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -11,7 +10,6 @@ const baseUrl = 'https://www.beergourmet.hu';
 const fetchPath = '/keszletkisopres-giga-akcio';
 const itemDataAttribute = 'data-wnd_product_item_data';
 const snapshotsDir = join(__dirname, 'data', 'snapshots');
-const beerIconPath = join(__dirname, 'assets', 'beer.png');
 const outOfStockText = 'Nincs raktáron';
 
 const mapItems = (res, section = null) => {
@@ -110,9 +108,6 @@ const outOfStockChangeCheck = (prevResults, prevResultsIds, currentResults, curr
                 .map(prev => ({ ...prev, outOfStock: true }));
 };
 
-const notifyScriptPath = join(__dirname, 'notify.py');
-const dashboardHtmlPath = join(__dirname, 'dashboard', 'index.html');
-
 const pruneOldSnapshots = () => {
         if (!fs.existsSync(snapshotsDir)) return;
         const sixMonthsAgo = Date.now() - 6 * 30 * 24 * 60 * 60 * 1000;
@@ -126,16 +121,6 @@ const pruneOldSnapshots = () => {
                                 console.log(`Pruned old snapshot: ${f}`);
                         }
                 });
-};
-
-const showNotification = () => {
-        if (process.env.CI) return;
-        const proc = spawn('python3', [notifyScriptPath, beerIconPath, dashboardHtmlPath], {
-                detached: true,
-                stdio: 'ignore'
-        });
-        proc.unref();
-        proc.on('error', (err) => console.error('Notification error:', err));
 };
 
 const matchResults = (prevResults, currentResults) => {
@@ -159,7 +144,7 @@ const matchResults = (prevResults, currentResults) => {
 
         pruneOldSnapshots();
         writeSnapshotToFile(currentResults);
-        runBuild().then(showNotification);
+        runBuild();
 };
 
 fetch(`${baseUrl}${fetchPath}`)

@@ -7,11 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm start        # fetch and diff beer listings
 node index.js    # equivalent
-beercheck        # shell alias defined in ~/.bashrc
 node build.js    # regenerate dashboard/index.html from existing snapshots
 ```
 
-There are no tests. Open `dashboard/index.html` directly in a browser, or use the `beerresult` shell alias (defined in `~/.bashrc` as `~/git/bgcheck/open-dashboard.sh`).
+There are no tests. The dashboard is hosted at https://bgcheck.netlify.app (auto-deployed via GitHub Actions).
 
 ## What this does
 
@@ -21,7 +20,7 @@ A Node.js ESM scraper (`index.js`) + static dashboard generator (`build.js`) for
 1. Fetches the clearance page and parses product items from `.item > .item-wrapper > a` via the `data-wnd_product_item_data` JSON attribute. Deduplicates by product ID (the page contains duplicates).
 2. Reads the latest snapshot from `data/snapshots/` as previous state (empty array on first run).
 3. Diffs previous vs. current: added/removed items, price changes, newly out-of-stock (Hungarian: *Nincs raktáron*).
-4. If any diff: saves a timestamped snapshot to `data/snapshots/`, sends a clickable desktop notification via `notify.py`, and rebuilds the dashboard.
+4. If any diff: prunes snapshots older than 6 months, saves a timestamped snapshot to `data/snapshots/`, and rebuilds the dashboard.
 
 **Dashboard flow (`build.js`):**
 - Reads all `data/snapshots/*.json` files in chronological order and aggregates per-product price/availability history.
@@ -30,15 +29,14 @@ A Node.js ESM scraper (`index.js`) + static dashboard generator (`build.js`) for
 
 ## Scheduling
 
-The script runs automatically via a **systemd user timer** (not cron), configured in `~/.config/systemd/user/beercheck.timer` and `beercheck.service`. It fires 1 minute after boot, then every hour. `Persistent=true` means missed runs are caught up after the machine wakes.
-
-The service invokes the shell alias `beercheck` (defined in `~/.bashrc` as `node ~/git/bgcheck/index.js`) by launching an interactive bash session.
+Crawling runs automatically via **GitHub Actions** (`.github/workflows/crawl.yml`), hourly. On diff: commits new snapshot + rebuilt dashboard to `main`, which triggers an automatic Netlify redeploy.
 
 ```bash
-systemctl --user status beercheck.timer     # check schedule
-journalctl --user -u beercheck.service      # view run logs
-systemctl --user restart beercheck.timer    # restart timer
+# Trigger manually via GitHub UI:
+# Actions → Crawl and deploy → Run workflow
 ```
+
+The local systemd timer is disabled — GitHub Actions handles crawling.
 
 ## Key constants
 
@@ -48,15 +46,20 @@ systemctl --user restart beercheck.timer    # restart timer
 | `itemDataAttribute` | HTML attribute name holding JSON product data |
 | `outOfStockText` | Hungarian string used to detect out-of-stock state |
 
-`data/` and `dashboard/` are both gitignored. `data/snapshots/` is the sole source of truth — the latest snapshot is the current state, older ones are the history. `dashboard/index.html` is generated output — open it directly in a browser.
+`data/snapshots/` is the sole source of truth — the latest snapshot is the current state, older ones are the history. `dashboard/index.html` is generated output committed to the repo and served via Netlify.
 
-## Notifications
+## Local desktop notifications (`local-notify/`)
 
-Desktop notifications are sent via `notify.py` (Python + `gi.repository.Notify`), which is required because `notify-send --action` is not supported by the Ubuntu GNOME notification server. Clicking the notification runs `open-dashboard.sh`, which opens `dashboard/index.html` with the system default browser via `xdg-open`.
+`local-notify/check-update.js` polls the GitHub API for new commits by `github-actions[bot]`. If a new commit is found, it sends a desktop notification (via `local-notify/notify.py`) that opens the Netlify dashboard on click.
 
-The `notify.py` process is spawned detached from Node.js (`detached: true` + `proc.unref()`) and exits automatically after 60 seconds if not interacted with.
+Requires a GitHub fine-grained personal access token with `Contents: Read-only` on this repo. Copy `local-notify/.env.example` to `local-notify/.env` and fill in the token.
 
 ```bash
-# Test the notification manually
-python3 ~/git/bgcheck/notify.py ~/git/bgcheck/assets/beer.png ~/git/bgcheck/open-dashboard.sh &
+# Test manually
+node ~/git/bgcheck/local-notify/check-update.js
+
+# Test the notification directly
+python3 ~/git/bgcheck/local-notify/notify.py ~/git/bgcheck/assets/beer.png https://bgcheck.netlify.app &
 ```
+
+The local systemd timer (once set up) runs `check-update.js` every 30 minutes.
