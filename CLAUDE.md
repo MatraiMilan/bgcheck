@@ -33,10 +33,10 @@ Crawling runs automatically via **GitHub Actions** (`.github/workflows/crawl.yml
 
 ```bash
 # Trigger manually via GitHub UI:
-# Actions → Crawl and deploy → Run workflow
+# Actions → Crawl → Run workflow
 ```
 
-The local systemd timer is disabled — GitHub Actions handles crawling.
+GitHub Actions handles crawling. The local `beercheck.timer` systemd timer runs `check-update.js` every 30 minutes for desktop notifications.
 
 ## Key constants
 
@@ -53,11 +53,22 @@ The local systemd timer is disabled — GitHub Actions handles crawling.
 `local-notify/check-update.js` polls the GitHub API for new commits by `github-actions[bot]`. If a new commit is found, it sends a desktop notification (via `local-notify/notify.py`) that opens the dashboard on click.
 
 ```bash
-# Test manually
-node ~/git/bgcheck/local-notify/check-update.js
-
-# Test the notification directly
+# Test the notification directly (without crawl)
 python3 ~/git/bgcheck/local-notify/notify.py ~/git/bgcheck/assets/beer.png https://matraimilan.github.io/bgcheck &
 ```
 
-The local systemd timer (once set up) runs `check-update.js` every 30 minutes.
+## Manual end-to-end test
+
+1. Delete the latest snapshot and commit to force a diff on the next crawl:
+   ```bash
+   rm data/snapshots/$(ls -t data/snapshots/ | head -1)
+   git add data/snapshots/
+   git commit -m "chore: remove latest snapshot to trigger crawl"
+   git push
+   ```
+2. Trigger the crawl manually: **Actions → Crawl → Run workflow**
+3. Verify the crawl committed a new snapshot and the **Deploy** workflow started automatically after
+4. Test the desktop notification locally:
+   ```bash
+   systemctl --user start beercheck.service
+   ```
