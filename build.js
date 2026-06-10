@@ -118,7 +118,19 @@ header h1{font-size:1.3rem;font-weight:700}
   .csel-list{width:100%}
   #search{width:100%}
   .grid{padding:34px 14px 14px;gap:14px}
+  .reset-fab{width:60px;height:60px}
+  .reset-fab.pushed{bottom:96px}
+  .scroll-top-fab{width:60px;height:60px}
 }
+.reset-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1c1007;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.85),0 1px 3px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity 300ms ease,transform .15s ease,bottom 300ms ease;z-index:100}
+.reset-fab.visible{opacity:1;pointer-events:auto}
+.reset-fab.pushed{bottom:88px}
+.reset-fab:hover{background:#3a2010}
+.reset-fab:active{transform:scale(.94)}
+.scroll-top-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1c1007;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.85),0 1px 3px rgba(0,0,0,.6);opacity:0;pointer-events:none;transform:translateY(80px);transition:opacity 300ms ease,transform 300ms ease;z-index:100}
+.scroll-top-fab.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+.scroll-top-fab:hover{background:#3a2010}
+.scroll-top-fab:active{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -168,6 +180,14 @@ header h1{font-size:1.3rem;font-weight:700}
 </div>
 
 <div class="grid" id="grid"></div>
+
+<button class="reset-fab" id="reset-fab" title="Szűrők törlése" aria-label="Szűrők törlése">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+</button>
+
+<button class="scroll-top-fab" id="scroll-top-fab" title="Ugrás az elejére" aria-label="Ugrás az elejére">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
 
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -291,6 +311,7 @@ const applyFilters = () => {
       (section && p.section !== section);
     card.classList.toggle('hidden', hidden);
   });
+  updateResetBtn();
 };
 
 // Slider input handlers
@@ -344,6 +365,7 @@ const applySort = () => {
     });
   }
   cards.forEach(c => grid.appendChild(c));
+  updateResetBtn();
 };
 sortBtn.addEventListener('click', () => { sortIdx = (sortIdx + 1) % sortStates.length; applySort(); });
 
@@ -513,6 +535,54 @@ toolbarChevron.addEventListener('click', () => {
   }
   const open = toolbarFilters.classList.toggle('open');
   toolbarChevron.classList.toggle('active', open);
+});
+
+const resetFab = document.getElementById('reset-fab');
+
+const isFiltersDirty = () =>
+  parseInt(pmin.value) !== globalMin ||
+  parseInt(pmax.value) !== globalMax ||
+  document.getElementById('search').value !== '' ||
+  !(document.getElementById('chk-in')?.checked ?? true) ||
+  !(document.getElementById('chk-out')?.checked ?? true) ||
+  !(document.getElementById('chk-new')?.checked ?? true) ||
+  cselValue !== '' ||
+  sortIdx !== 0;
+
+const updateResetBtn = () => {
+  resetFab.classList.toggle('visible', isFiltersDirty());
+  resetFab.classList.toggle('pushed', scrollTopFab.classList.contains('visible'));
+};
+
+resetFab.addEventListener('click', () => {
+  pmin.value = globalMin;
+  pmax.value = globalMax;
+  pminVal.value = fmt(globalMin);
+  pmaxVal.value = fmt(globalMax);
+  updateRangeFill();
+  document.getElementById('search').value = '';
+  ['chk-in','chk-out','chk-new'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
+  cselValue = '';
+  cselLabel.textContent = 'Minden kategória';
+  cselList.querySelectorAll('.csel-option').forEach(o => o.classList.toggle('selected', o.dataset.value === ''));
+  sortIdx = 0;
+  applySort();
+  applyFilters();
+});
+
+const scrollTopFab = document.getElementById('scroll-top-fab');
+const SCROLL_THRESHOLD = 600;
+
+const updateScrollTopFab = () => {
+  const show = window.scrollY >= SCROLL_THRESHOLD;
+  scrollTopFab.classList.toggle('visible', show);
+  resetFab.classList.toggle('pushed', show);
+};
+
+window.addEventListener('scroll', updateScrollTopFab, { passive: true });
+
+scrollTopFab.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 <\/script>
 </body>
