@@ -699,6 +699,9 @@ const navigateDiff = (newIdx, dir) => {
   diffSlideEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;max-height:460px;overflow-y:auto;transition:transform 280ms ease;transform:translateX(0)';
   list.style.height = listH + 'px';
   list.appendChild(newSlideEl);
+  const newH = Math.min(newSlideEl.scrollHeight, 460);
+  list.style.transition = 'height 280ms ease';
+  list.style.height = Math.max(newH, 60) + 'px';
 
   const subtitle = document.getElementById('diff-subtitle');
   subtitle.style.opacity = '0';
@@ -718,6 +721,7 @@ const navigateDiff = (newIdx, dir) => {
   setTimeout(() => {
     list.removeChild(diffSlideEl);
     diffSlideEl = newSlideEl;
+    list.style.transition = '';
     list.style.height = '';
     diffSlideEl.style.cssText = '';
     diffSlideEl.className = 'diff-slide';
