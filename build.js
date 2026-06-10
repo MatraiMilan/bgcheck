@@ -60,8 +60,8 @@ header h1{font-size:1.3rem;font-weight:700}
 .modal-img-ph{width:76px;height:76px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;background:#fdf6ee;border-radius:8px;flex-shrink:0}
 .modal-info{flex:1;min-width:0}
 .modal-info h2{font-size:.95rem;font-weight:700;color:#1a1a1a;line-height:1.4;margin-bottom:4px}
-.modal-info a{font-size:.78rem;color:#d97706}
-.modal-info a:hover{text-decoration:underline}
+.modal-info a{font-size:.78rem;color:#d97706;text-decoration:none}
+.modal-info a:hover{opacity:.8}
 .modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:#aaa;line-height:1;padding:4px;flex-shrink:0;margin-left:auto}
 .modal-close:hover{color:#333}
 .modal-kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f0e8d8}
@@ -131,6 +131,22 @@ header h1{font-size:1.3rem;font-weight:700}
 .scroll-top-fab.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
 .scroll-top-fab:hover{background:#3a2010}
 .scroll-top-fab:active{transform:scale(.94)}
+.bell-btn{background:none;border:none;cursor:pointer;padding:6px;position:relative;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s;flex-shrink:0}
+.bell-btn:hover{background:rgba(255,255,255,.12)}
+.bell-badge{position:absolute;top:2px;right:2px;width:16px;height:16px;background:#ef4444;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;border:1.5px solid #1c1007;line-height:1;pointer-events:none}
+body.scroll-locked{position:fixed;width:100%}
+.diff-modal-box{overflow:hidden;display:flex;flex-direction:column}
+#diff-list{max-height:460px;overflow-y:auto}
+#diff-subtitle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.78rem;color:#d97706;margin-top:2px}
+.diff-item{display:flex;align-items:center;gap:12px;padding:8px 6px;border-bottom:1px solid #f0e8d8;border-radius:6px;transition:background .1s;cursor:pointer;text-decoration:none;color:inherit}
+.diff-item:hover{background:#faf5ee}
+.diff-item:last-child{border-bottom:none}
+.diff-item-img{width:48px;height:48px;object-fit:contain;border-radius:6px;padding:4px;flex-shrink:0}
+.diff-item-name{font-size:.85rem;font-weight:600;color:#1a1a1a;line-height:1.35;margin-bottom:3px}
+.diff-item-change{font-size:.8rem;display:flex;gap:8px;align-items:center;justify-content:flex-start}
+.diff-empty{text-align:center;padding:32px 0;color:#999;font-size:.9rem}
+.ext-link{color:#d97706;display:inline-flex;align-items:center;flex-shrink:0;padding:2px;border-radius:3px;transition:opacity .15s}
+.ext-link:hover{opacity:.7}
 </style>
 </head>
 <body>
@@ -145,6 +161,10 @@ header h1{font-size:1.3rem;font-weight:700}
       </div>
     </div>
   </div>
+  <button class="bell-btn" id="bell-btn" title="Legújabb változások" aria-label="Legújabb változások">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="bell-badge" id="bell-badge">!</span>
+  </button>
 </header>
 
 <div class="toolbar">
@@ -198,6 +218,19 @@ header h1{font-size:1.3rem;font-weight:700}
     </div>
     <div class="modal-kpis" id="modal-kpis"></div>
     <div class="modal-chart"><canvas id="mchart"></canvas></div>
+  </div>
+</div>
+
+<div class="overlay" id="diff-overlay">
+  <div class="modal diff-modal-box">
+    <div class="modal-top" style="flex-shrink:0">
+      <div class="modal-info">
+        <h2>Legújabb változások</h2>
+        <div id="diff-subtitle"></div>
+      </div>
+      <button class="modal-close" id="diff-modal-close">✕</button>
+    </div>
+    <div id="diff-list"></div>
   </div>
 </div>
 
@@ -438,14 +471,34 @@ document.getElementById('search').addEventListener('input', applyFilters);
 const overlay = document.getElementById('overlay');
 let mChart = null;
 
+const extLinkSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/><\\/svg>';
+
+let scrollLockY = 0;
+const lockScroll = () => {
+  scrollLockY = window.scrollY;
+  document.body.style.top = '-' + scrollLockY + 'px';
+  document.body.classList.add('scroll-locked');
+};
+const unlockScroll = () => {
+  document.body.classList.remove('scroll-locked');
+  document.body.style.top = '';
+  window.scrollTo(0, scrollLockY);
+  window.dispatchEvent(new Event('scroll'));
+};
+const updateBodyScroll = () => {
+  const anyOpen = overlay.classList.contains('open') || diffOverlay.classList.contains('open');
+  anyOpen ? lockScroll() : unlockScroll();
+};
+
 const closeModal = () => {
   overlay.classList.remove('open');
   if (mChart) { mChart.destroy(); mChart = null; }
+  updateBodyScroll();
 };
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDiffModal(); } });
 
 grid.addEventListener('click', e => {
   const card = e.target.closest('.card');
@@ -465,7 +518,7 @@ grid.addEventListener('click', e => {
 
   document.getElementById('modal-info').innerHTML =
     '<h2>' + esc(p.name) + '</h2>' +
-    '<a href="' + escA(p.url) + '" target="_blank" rel="noopener">Megnyitás a weboldalon &rarr;</a>';
+    '<a href="' + escA(p.url) + '" target="_blank" rel="noopener" class="ext-link" style="font-size:.78rem;gap:5px">Megnyitás a weboldalon ' + extLinkSvg + '</a>';
 
   const modalState = card.dataset.state;
   const statusHtml = {
@@ -516,6 +569,77 @@ grid.addEventListener('click', e => {
   }
 
   overlay.classList.add('open');
+  updateBodyScroll();
+});
+
+// Bell / diff modal
+const bellBtn = document.getElementById('bell-btn');
+const bellBadge = document.getElementById('bell-badge');
+const diffOverlay = document.getElementById('diff-overlay');
+
+const lastViewed = localStorage.getItem('beercheck_lastViewedDiff');
+if (!lastViewed || new Date(lastViewed) < new Date(DATA.lastCrawl)) {
+  bellBadge.style.display = 'flex';
+}
+
+const closeDiffModal = () => { diffOverlay.classList.remove('open'); updateBodyScroll(); };
+document.getElementById('diff-modal-close').addEventListener('click', closeDiffModal);
+diffOverlay.addEventListener('click', e => { if (e.target === diffOverlay) closeDiffModal(); });
+
+const diffTypeLabel = type => {
+  if (type === 'new')        return '<span style="color:#1d4ed8;font-weight:600">Új termék</span>';
+  if (type === 'removed')    return '<span style="color:#6b7280;font-weight:600">Törölve a weboldalról</span>';
+  if (type === 'oos')        return '<span style="color:#b91c1c;font-weight:600">Elfogyott</span>';
+  if (type === 'back')       return '<span style="color:#7c3aed;font-weight:600">Újra elérhető</span>';
+  if (type === 'price_up')   return '<span style="color:#dc2626;font-weight:600">&#9650; Ár nőtt</span>';
+  if (type === 'price_down') return '<span style="color:#16a34a;font-weight:600">&#9660; Ár csökkent</span>';
+  return '';
+};
+
+bellBtn.addEventListener('click', () => {
+  const diff = DATA.diff;
+  const diffList = document.getElementById('diff-list');
+  const setSubtitle = () => {
+    if (diff && diff.prevCrawl) {
+      document.getElementById('diff-subtitle').innerHTML =
+        '<span>' + fmtDT(diff.prevCrawl) + '</span>' +
+        '<span style="line-height:1">→</span>' +
+        '<span>' + fmtDT(DATA.lastCrawl) + '</span>';
+    }
+  };
+  if (!diff || !diff.prevCrawl) {
+    diffList.innerHTML = '<div class="diff-empty">Nincs előző snapshot, diff nem elérhető.</div>';
+  } else if (!diff.changes.length) {
+    setSubtitle();
+    diffList.innerHTML = '<div class="diff-empty">Nincs változás az előző snapshot óta.</div>';
+  } else {
+    setSubtitle();
+    diffList.innerHTML = diff.changes.map(c => {
+      const bg = c.bgColor || '#fdf6ee';
+      const imgHtml = c.image
+        ? '<img class="diff-item-img" src="' + escA(c.image) + '" alt="" style="background:' + bg + '" onerror="this.style.display=\\'none\\'">'
+        : '<div class="diff-item-img" style="background:#fdf6ee;display:flex;align-items:center;justify-content:center;font-size:1.8rem">&#x1F37A;</div>';
+      let extra = '';
+      if (c.type === 'price_up' || c.type === 'price_down') {
+        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.prevPrice) + ' → ' + fmt(c.newPrice) + '</span>';
+      } else if (c.type === 'new' && c.newPrice != null) {
+        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
+      } else if (c.type === 'removed' && c.prevPrice != null) {
+        extra = '<span style="color:#888;font-size:.75rem">volt: ' + fmt(c.prevPrice) + '</span>';
+      } else if ((c.type === 'oos' || c.type === 'back') && c.newPrice != null) {
+        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
+      }
+      return '<a href="' + escA(c.url) + '" target="_blank" rel="noopener" class="diff-item">' + imgHtml +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="diff-item-name">' + esc(c.name) + '</div>' +
+          '<div class="diff-item-change">' + diffTypeLabel(c.type) + extra + '</div>' +
+        '</div></a>';
+    }).join('');
+  }
+  diffOverlay.classList.add('open');
+  updateBodyScroll();
+  localStorage.setItem('beercheck_lastViewedDiff', DATA.lastCrawl);
+  bellBadge.style.display = 'none';
 });
 
 function kpi(label, val) {
@@ -574,7 +698,8 @@ const scrollTopFab = document.getElementById('scroll-top-fab');
 const SCROLL_THRESHOLD = 600;
 
 const updateScrollTopFab = () => {
-  const show = window.scrollY >= SCROLL_THRESHOLD;
+  const y = document.body.classList.contains('scroll-locked') ? scrollLockY : window.scrollY;
+  const show = y >= SCROLL_THRESHOLD;
   scrollTopFab.classList.toggle('visible', show);
   resetFab.classList.toggle('pushed', show);
 };
@@ -669,7 +794,42 @@ export const build = async () => {
                 Object.entries(products).filter(([_, p]) => p.history.at(-1).t === lastCrawl)
         );
 
-        const safeJson = JSON.stringify({ generatedAt, lastCrawl, products: visibleProducts })
+        // Compute diff between last two snapshots
+        const prevCrawl = snapshots.length >= 2 ? snapshots[snapshots.length - 2].timestamp : null;
+        const diffChanges = [];
+        if (prevCrawl) {
+                const latestSnap = snapshots[snapshots.length - 1];
+                const prevSnap = snapshots[snapshots.length - 2];
+                const latestById = new Map(latestSnap.products.map(p => [String(p.id), p]));
+                const prevById = new Map(prevSnap.products.map(p => [String(p.id), p]));
+                const mkEntry = (id, p, type, prevPrice, newPrice) => ({
+                        id, name: p.name, image: products[id]?.image || p.image || null,
+                        bgColor: products[id]?.bgColor || null, url: p.url,
+                        type, prevPrice, newPrice
+                });
+                for (const [id, curr] of latestById) {
+                        const prev = prevById.get(id);
+                        if (!prev) {
+                                diffChanges.push(mkEntry(id, curr, 'new', null, Math.round(parseFloat(curr.price))));
+                                continue;
+                        }
+                        const currPrice = Math.round(parseFloat(curr.price));
+                        const prevPrice = Math.round(parseFloat(prev.price));
+                        if (prev.outOfStock !== curr.outOfStock) {
+                                diffChanges.push(mkEntry(id, curr, curr.outOfStock ? 'oos' : 'back', prevPrice, currPrice));
+                        } else if (prevPrice !== currPrice) {
+                                diffChanges.push(mkEntry(id, curr, currPrice > prevPrice ? 'price_up' : 'price_down', prevPrice, currPrice));
+                        }
+                }
+                for (const [id, prev] of prevById) {
+                        if (!latestById.has(id)) {
+                                diffChanges.push(mkEntry(id, prev, 'removed', Math.round(parseFloat(prev.price)), null));
+                        }
+                }
+        }
+        const diff = { prevCrawl, changes: diffChanges };
+
+        const safeJson = JSON.stringify({ generatedAt, lastCrawl, diff, products: visibleProducts })
                 .replace(/<\/script>/gi, '<\\/script>');
 
         if (!fs.existsSync(dashboardDir)) fs.mkdirSync(dashboardDir);
