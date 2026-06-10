@@ -22,7 +22,9 @@ header{background:#1c1007;color:#fff;padding:14px 24px;display:flex;align-items:
 header h1{font-size:1.3rem;font-weight:700}
 .meta{font-size:.78rem;color:#b8977e}
 .toolbar{background:#fff;border-bottom:1px solid #ddd0b8;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.stats{display:flex;gap:20px;flex-wrap:wrap}
+.stats{display:flex;flex-direction:column;align-items:center;gap:16px}
+.stats-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.stats-total{font-size:.83rem;color:#666}
 .stat{font-size:.83rem;color:#666}
 .stat strong{color:#1a1a1a;font-weight:600}
 #search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s;margin-left:auto}
@@ -123,11 +125,14 @@ header h1{font-size:1.3rem;font-weight:700}
 
 <header>
   <div style="display:flex;align-items:center;gap:16px">
-    <h1>🍺 BeerCheck Dashboard</h1>
-    <span style="color:#b8977e;font-size:.9rem">|</span>
-    <span id="total-count" style="color:#f5d78e;font-size:.9rem"></span>
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <span style="font-size:1.3rem;line-height:1.4">🍺</span>
+      <div>
+        <h1>BeerCheck Dashboard</h1>
+        <span class="meta" id="meta"></span>
+      </div>
+    </div>
   </div>
-  <span class="meta" id="meta"></span>
 </header>
 
 <div class="toolbar">
@@ -199,13 +204,15 @@ const getState = p => {
 const inCount  = all.filter(p => getState(p) === 'in').length;
 const outCount = all.filter(p => getState(p) === 'out').length;
 const newCount = all.filter(p => getState(p) === 'new' || getState(p) === 'back').length;
-document.getElementById('total-count').textContent = 'Termékek: ' + all.length;
 const statCheck = (id, label, count) =>
   '<label class="stat-check' + (count === 0 ? ' disabled' : '') + '"><input type="checkbox" id="' + id + '"' + (count === 0 ? ' disabled' : ' checked') + '> ' + label + ': <strong>' + count + '</strong></label>';
 document.getElementById('stats').innerHTML =
+  '<div class="stats-total">Összesen: <strong>' + all.length + '</strong></div>' +
+  '<div class="stats-row">' +
   statCheck('chk-in', 'Készleten', inCount) +
   statCheck('chk-out', 'Elfogyott', outCount) +
-  statCheck('chk-new', 'Új', newCount);
+  statCheck('chk-new', 'Új', newCount) +
+  '</div>';
 
 // Price range init
 const allPrices = all.map(p => p.history.at(-1).price);
