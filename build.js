@@ -334,7 +334,15 @@ document.addEventListener('click', () => csel.classList.remove('open'));
 
 // Price drop filter
 const priceDropIds = new Set(
-  (DATA.diff?.changes || []).filter(c => c.type === 'price_down').map(c => String(c.id))
+  Object.entries(DATA.products)
+    .filter(([, p]) => {
+      const h = p.history;
+      const curr = h.at(-1).price;
+      if (curr === null) return false;
+      const prev = [...h].reverse().find(x => x.price !== null && x.price !== curr);
+      return prev && prev.price > curr;
+    })
+    .map(([id]) => id)
 );
 let showOnlyPriceDrops = false;
 const priceDownBtn = document.getElementById('price-down-btn');
