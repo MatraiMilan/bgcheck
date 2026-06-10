@@ -72,7 +72,7 @@ header h1{font-size:1.3rem;font-weight:700}
 .stat-check input[type=checkbox]{accent-color:#d97706;cursor:pointer;width:14px;height:14px;flex-shrink:0}
 .stat-check.disabled{opacity:.35;cursor:not-allowed}
 .stat-check.disabled input[type=checkbox]{cursor:not-allowed}
-.price-filter{display:flex;flex-direction:column;gap:7px;min-width:200px;max-width:280px}
+.price-filter{display:flex;flex-direction:column;gap:7px;min-width:155px;max-width:280px}
 .range-wrap{position:relative;height:28px}
 .range-track{position:absolute;top:50%;transform:translateY(-50%);height:4px;width:100%;background:#ddd0b8;border-radius:2px;pointer-events:none}
 .range-fill{position:absolute;height:100%;background:#d97706;border-radius:2px}
@@ -98,6 +98,10 @@ header h1{font-size:1.3rem;font-weight:700}
 .sort-btn.active{border-color:#d97706;background:#fdf6ee;color:#d97706}
 .sort-btn.active .sort-arrow{font-size:1.25rem;margin-bottom:0.25rem}
 .sort-arrow{font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:18px}
+.price-down-btn{display:flex;align-items:center;justify-content:center;padding:0;height:36px;width:36px;border:1.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#1a1a1a;transition:border-color .15s,background .15s,color .15s;flex-shrink:0}
+.price-down-btn:not(:disabled):hover{border-color:#16a34a}
+.price-down-btn.active{border-color:#16a34a;background:#f0fdf4;color:#16a34a}
+.price-down-btn:disabled{opacity:.35;cursor:not-allowed}
 .csel-option.selected{color:#d97706;font-weight:600}
 .price-sort-group{display:flex;align-items:center;gap:24px;flex-shrink:0}
 .toolbar-chevron{display:none;position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);width:48px;height:24px;background:#fff;border:1px solid #ddd0b8;border-top:none;border-radius:0 0 100px 100px;cursor:pointer;z-index:11;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -105,7 +109,7 @@ header h1{font-size:1.3rem;font-weight:700}
 .toolbar-chevron.active::after{transform:translateX(-50%) rotate(225deg);top:7px}
 .toolbar-filters{display:contents}
 @media(min-width:1178px){#search{margin-left:0}}
-@media(max-width:725px){
+@media(max-width:785px){
   .toolbar{padding:8px 12px 8px;gap:12px;align-items:center}
   .toolbar-chevron{display:block}
   .toolbar-filters{display:flex;flex-direction:column;gap:18px;width:100%;max-height:0;overflow:hidden;transition:max-height .5s ease,padding-top .5s ease;padding-top:0}
@@ -183,6 +187,9 @@ body.scroll-locked{position:fixed;width:100%}
           <input class="range-val" id="pmax-val" type="text">
         </div>
       </div>
+      <button type="button" class="price-down-btn" id="price-down-btn" title="Áresések szűrése" aria-label="Áresések szűrése" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 8 14 13 10 21 18"/><polyline points="17 18 21 18 21 14"/></svg>
+      </button>
       <button type="button" class="sort-btn" id="sort-btn">
         <span>Ár</span><span class="sort-arrow" id="sort-arrow">⇅</span>
       </button>
@@ -325,6 +332,19 @@ Object.values(DATA.products).forEach(p => {
 cselBtn.addEventListener('click', e => { e.stopPropagation(); csel.classList.toggle('open'); });
 document.addEventListener('click', () => csel.classList.remove('open'));
 
+// Price drop filter
+const priceDropIds = new Set(
+  (DATA.diff?.changes || []).filter(c => c.type === 'price_down').map(c => String(c.id))
+);
+let showOnlyPriceDrops = false;
+const priceDownBtn = document.getElementById('price-down-btn');
+if (priceDropIds.size > 0) priceDownBtn.disabled = false;
+priceDownBtn.addEventListener('click', () => {
+  showOnlyPriceDrops = !showOnlyPriceDrops;
+  priceDownBtn.classList.toggle('active', showOnlyPriceDrops);
+  applyFilters();
+});
+
 // Combined filter
 const applyFilters = () => {
   const q = document.getElementById('search').value.toLowerCase().trim();
@@ -341,7 +361,8 @@ const applyFilters = () => {
       (q && !card.dataset.name.includes(q)) ||
       (latest.price < lo || latest.price > hi) ||
       (state === 'out' ? !showOut : state === 'in' ? !showIn : !showNew) ||
-      (section && p.section !== section);
+      (section && p.section !== section) ||
+      (showOnlyPriceDrops && !priceDropIds.has(card.dataset.id));
     card.classList.toggle('hidden', hidden);
   });
   updateResetBtn();
@@ -671,7 +692,8 @@ const isFiltersDirty = () =>
   !(document.getElementById('chk-out')?.checked ?? true) ||
   !(document.getElementById('chk-new')?.checked ?? true) ||
   cselValue !== '' ||
-  sortIdx !== 0;
+  sortIdx !== 0 ||
+  showOnlyPriceDrops;
 
 const updateResetBtn = () => {
   resetFab.classList.toggle('visible', isFiltersDirty());
@@ -689,6 +711,8 @@ resetFab.addEventListener('click', () => {
   cselValue = '';
   cselLabel.textContent = 'Minden kategória';
   cselList.querySelectorAll('.csel-option').forEach(o => o.classList.toggle('selected', o.dataset.value === ''));
+  showOnlyPriceDrops = false;
+  priceDownBtn.classList.remove('active');
   sortIdx = 0;
   applySort();
   applyFilters();
