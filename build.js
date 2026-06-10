@@ -140,8 +140,13 @@ header h1{font-size:1.3rem;font-weight:700}
 .bell-badge{position:absolute;top:2px;right:2px;width:16px;height:16px;background:#ef4444;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;border:1.5px solid #1c1007;line-height:1;pointer-events:none}
 body.scroll-locked{position:fixed;width:100%}
 .diff-modal-box{overflow:hidden;display:flex;flex-direction:column}
-#diff-list{max-height:460px;overflow-y:auto}
-#diff-subtitle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.78rem;color:#d97706;margin-top:2px}
+.diff-nav-area{display:flex;align-items:center;gap:4px;min-height:0}
+.diff-nav-btn{background:none;border:none;cursor:pointer;color:#bbb;border-radius:8px;width:36px;min-width:36px;height:72px;display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.diff-nav-btn:not(:disabled):hover{color:#1a1a1a}
+.diff-nav-btn:disabled{opacity:.2;cursor:not-allowed}
+#diff-list{flex:1;overflow:hidden;position:relative}
+.diff-slide{max-height:460px;overflow-y:auto}
+#diff-subtitle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.78rem;color:#d97706;margin-top:2px;transition:opacity 140ms}
 .diff-item{display:flex;align-items:center;gap:12px;padding:8px 6px;border-bottom:1px solid #f0e8d8;border-radius:6px;transition:background .1s;cursor:pointer;text-decoration:none;color:inherit}
 .diff-item:hover{background:#faf5ee}
 .diff-item:last-child{border-bottom:none}
@@ -237,7 +242,15 @@ body.scroll-locked{position:fixed;width:100%}
       </div>
       <button class="modal-close" id="diff-modal-close">✕</button>
     </div>
-    <div id="diff-list"></div>
+    <div class="diff-nav-area">
+      <button class="diff-nav-btn" id="diff-prev" aria-label="Előző változások">
+        <svg style="position:relative;right:10px" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div id="diff-list"><div id="diff-slide" class="diff-slide"></div></div>
+      <button class="diff-nav-btn" id="diff-next" aria-label="Következő változások">
+        <svg style="position:relative;left:6px" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -605,6 +618,8 @@ grid.addEventListener('click', e => {
 const bellBtn = document.getElementById('bell-btn');
 const bellBadge = document.getElementById('bell-badge');
 const diffOverlay = document.getElementById('diff-overlay');
+const diffPrevBtn = document.getElementById('diff-prev');
+const diffNextBtn = document.getElementById('diff-next');
 
 const lastViewed = localStorage.getItem('beercheck_lastViewedDiff');
 if (!lastViewed || new Date(lastViewed) < new Date(DATA.lastCrawl)) {
@@ -625,46 +640,115 @@ const diffTypeLabel = type => {
   return '';
 };
 
-bellBtn.addEventListener('click', () => {
-  const diff = DATA.diff;
-  const diffList = document.getElementById('diff-list');
-  const setSubtitle = () => {
-    if (diff && diff.prevCrawl) {
-      document.getElementById('diff-subtitle').innerHTML =
-        '<span>' + fmtDT(diff.prevCrawl) + '</span>' +
-        '<span style="line-height:1">→</span>' +
-        '<span>' + fmtDT(DATA.lastCrawl) + '</span>';
+const makeDiffItemsHtml = diff => {
+  if (!diff || !diff.changes.length) return '<div class="diff-empty">Nincs változás az előző snapshot óta.</div>';
+  return diff.changes.map(c => {
+    const bg = c.bgColor || '#fdf6ee';
+    const imgHtml = c.image
+      ? '<img class="diff-item-img" src="' + escA(c.image) + '" alt="" style="background:' + bg + '" onerror="this.style.display=\\'none\\'">'
+      : '<div class="diff-item-img" style="background:#fdf6ee;display:flex;align-items:center;justify-content:center;font-size:1.8rem">&#x1F37A;</div>';
+    let extra = '';
+    if (c.type === 'price_up' || c.type === 'price_down') {
+      extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.prevPrice) + ' → ' + fmt(c.newPrice) + '</span>';
+    } else if (c.type === 'new' && c.newPrice != null) {
+      extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
+    } else if (c.type === 'removed' && c.prevPrice != null) {
+      extra = '<span style="color:#888;font-size:.75rem">volt: ' + fmt(c.prevPrice) + '</span>';
+    } else if ((c.type === 'oos' || c.type === 'back') && c.newPrice != null) {
+      extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
     }
-  };
-  if (!diff || !diff.prevCrawl) {
-    diffList.innerHTML = '<div class="diff-empty">Nincs előző snapshot, diff nem elérhető.</div>';
-  } else if (!diff.changes.length) {
-    setSubtitle();
-    diffList.innerHTML = '<div class="diff-empty">Nincs változás az előző snapshot óta.</div>';
+    return '<a href="' + escA(c.url) + '" target="_blank" rel="noopener" class="diff-item">' + imgHtml +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="diff-item-name">' + esc(c.name) + '</div>' +
+        '<div class="diff-item-change">' + diffTypeLabel(c.type) + extra + '</div>' +
+      '</div></a>';
+  }).join('');
+};
+
+const diffs = DATA.diffs;
+let currentDiffIdx = Math.max(0, diffs.length - 1);
+let diffAnimating = false;
+let diffSlideEl = document.getElementById('diff-slide');
+
+const updateDiffSubtitle = () => {
+  const subtitle = document.getElementById('diff-subtitle');
+  const diff = diffs[currentDiffIdx];
+  subtitle.innerHTML = diff
+    ? '<span>' + fmtDT(diff.prevCrawl) + '</span><span style="line-height:1">→</span><span>' + fmtDT(diff.currCrawl) + '</span>'
+    : '';
+};
+
+const updateDiffChevrons = () => {
+  diffPrevBtn.disabled = currentDiffIdx <= 0;
+  diffNextBtn.disabled = currentDiffIdx >= diffs.length - 1;
+};
+
+const navigateDiff = (newIdx, dir) => {
+  if (diffAnimating || newIdx < 0 || newIdx >= diffs.length) return;
+  diffAnimating = true;
+
+  const list = document.getElementById('diff-list');
+  const listH = Math.max(list.clientHeight, 60);
+  const outX = dir === 'prev' ? '100%' : '-100%';
+  const inX  = dir === 'prev' ? '-100%' : '100%';
+
+  const newSlideEl = document.createElement('div');
+  newSlideEl.className = 'diff-slide';
+  newSlideEl.innerHTML = makeDiffItemsHtml(diffs[newIdx]);
+  newSlideEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;max-height:460px;overflow-y:auto;transition:transform 280ms ease;transform:translateX(' + inX + ')';
+  diffSlideEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;max-height:460px;overflow-y:auto;transition:transform 280ms ease;transform:translateX(0)';
+  list.style.height = listH + 'px';
+  list.appendChild(newSlideEl);
+
+  const subtitle = document.getElementById('diff-subtitle');
+  subtitle.style.opacity = '0';
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    diffSlideEl.style.transform = 'translateX(' + outX + ')';
+    newSlideEl.style.transform = 'translateX(0)';
+  }));
+
+  setTimeout(() => {
+    currentDiffIdx = newIdx;
+    updateDiffSubtitle();
+    subtitle.style.opacity = '1';
+    updateDiffChevrons();
+  }, 140);
+
+  setTimeout(() => {
+    list.removeChild(diffSlideEl);
+    diffSlideEl = newSlideEl;
+    list.style.height = '';
+    diffSlideEl.style.cssText = '';
+    diffSlideEl.className = 'diff-slide';
+    diffAnimating = false;
+  }, 290);
+};
+
+diffPrevBtn.addEventListener('click', () => navigateDiff(currentDiffIdx - 1, 'prev'));
+diffNextBtn.addEventListener('click', () => navigateDiff(currentDiffIdx + 1, 'next'));
+
+const diffListEl = document.getElementById('diff-list');
+let diffTouchX = null;
+diffListEl.addEventListener('touchstart', e => { diffTouchX = e.touches[0].clientX; }, { passive: true });
+diffListEl.addEventListener('touchend', e => {
+  if (diffTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - diffTouchX;
+  diffTouchX = null;
+  if (Math.abs(dx) < 50) return;
+  if (dx < 0) navigateDiff(currentDiffIdx + 1, 'next');
+  else navigateDiff(currentDiffIdx - 1, 'prev');
+}, { passive: true });
+
+bellBtn.addEventListener('click', () => {
+  if (diffs.length === 0) {
+    diffSlideEl.innerHTML = '<div class="diff-empty">Nincs előző snapshot, diff nem elérhető.</div>';
+    document.getElementById('diff-subtitle').innerHTML = '';
   } else {
-    setSubtitle();
-    diffList.innerHTML = diff.changes.map(c => {
-      const bg = c.bgColor || '#fdf6ee';
-      const imgHtml = c.image
-        ? '<img class="diff-item-img" src="' + escA(c.image) + '" alt="" style="background:' + bg + '" onerror="this.style.display=\\'none\\'">'
-        : '<div class="diff-item-img" style="background:#fdf6ee;display:flex;align-items:center;justify-content:center;font-size:1.8rem">&#x1F37A;</div>';
-      let extra = '';
-      if (c.type === 'price_up' || c.type === 'price_down') {
-        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.prevPrice) + ' → ' + fmt(c.newPrice) + '</span>';
-      } else if (c.type === 'new' && c.newPrice != null) {
-        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
-      } else if (c.type === 'removed' && c.prevPrice != null) {
-        extra = '<span style="color:#888;font-size:.75rem">volt: ' + fmt(c.prevPrice) + '</span>';
-      } else if ((c.type === 'oos' || c.type === 'back') && c.newPrice != null) {
-        extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
-      }
-      return '<a href="' + escA(c.url) + '" target="_blank" rel="noopener" class="diff-item">' + imgHtml +
-        '<div style="flex:1;min-width:0">' +
-          '<div class="diff-item-name">' + esc(c.name) + '</div>' +
-          '<div class="diff-item-change">' + diffTypeLabel(c.type) + extra + '</div>' +
-        '</div></a>';
-    }).join('');
+    diffSlideEl.innerHTML = makeDiffItemsHtml(diffs[currentDiffIdx]);
+    updateDiffSubtitle();
   }
+  updateDiffChevrons();
   diffOverlay.classList.add('open');
   updateBodyScroll();
   localStorage.setItem('beercheck_lastViewedDiff', DATA.lastCrawl);
@@ -826,42 +910,42 @@ export const build = async () => {
                 Object.entries(products).filter(([_, p]) => p.history.at(-1).t === lastCrawl)
         );
 
-        // Compute diff between last two snapshots
-        const prevCrawl = snapshots.length >= 2 ? snapshots[snapshots.length - 2].timestamp : null;
-        const diffChanges = [];
-        if (prevCrawl) {
-                const latestSnap = snapshots[snapshots.length - 1];
-                const prevSnap = snapshots[snapshots.length - 2];
-                const latestById = new Map(latestSnap.products.map(p => [String(p.id), p]));
+        // Compute all pairwise diffs
+        const computeSnapshotDiff = (prevSnap, currSnap) => {
                 const prevById = new Map(prevSnap.products.map(p => [String(p.id), p]));
+                const currById = new Map(currSnap.products.map(p => [String(p.id), p]));
+                const changes = [];
                 const mkEntry = (id, p, type, prevPrice, newPrice) => ({
                         id, name: p.name, image: products[id]?.image || p.image || null,
                         bgColor: products[id]?.bgColor || null, url: p.url,
                         type, prevPrice, newPrice
                 });
-                for (const [id, curr] of latestById) {
+                for (const [id, curr] of currById) {
                         const prev = prevById.get(id);
                         if (!prev) {
-                                diffChanges.push(mkEntry(id, curr, 'new', null, Math.round(parseFloat(curr.price))));
+                                changes.push(mkEntry(id, curr, 'new', null, Math.round(parseFloat(curr.price))));
                                 continue;
                         }
                         const currPrice = Math.round(parseFloat(curr.price));
                         const prevPrice = Math.round(parseFloat(prev.price));
                         if (prev.outOfStock !== curr.outOfStock) {
-                                diffChanges.push(mkEntry(id, curr, curr.outOfStock ? 'oos' : 'back', prevPrice, currPrice));
+                                changes.push(mkEntry(id, curr, curr.outOfStock ? 'oos' : 'back', prevPrice, currPrice));
                         } else if (prevPrice !== currPrice) {
-                                diffChanges.push(mkEntry(id, curr, currPrice > prevPrice ? 'price_up' : 'price_down', prevPrice, currPrice));
+                                changes.push(mkEntry(id, curr, currPrice > prevPrice ? 'price_up' : 'price_down', prevPrice, currPrice));
                         }
                 }
                 for (const [id, prev] of prevById) {
-                        if (!latestById.has(id)) {
-                                diffChanges.push(mkEntry(id, prev, 'removed', Math.round(parseFloat(prev.price)), null));
+                        if (!currById.has(id)) {
+                                changes.push(mkEntry(id, prev, 'removed', Math.round(parseFloat(prev.price)), null));
                         }
                 }
-        }
-        const diff = { prevCrawl, changes: diffChanges };
+                return { prevCrawl: prevSnap.timestamp, currCrawl: currSnap.timestamp, changes };
+        };
+        const diffs = snapshots.length >= 2
+                ? snapshots.slice(1).map((snap, i) => computeSnapshotDiff(snapshots[i], snap))
+                : [];
 
-        const safeJson = JSON.stringify({ generatedAt, lastCrawl, diff, products: visibleProducts })
+        const safeJson = JSON.stringify({ generatedAt, lastCrawl, diffs, products: visibleProducts })
                 .replace(/<\/script>/gi, '<\\/script>');
 
         if (!fs.existsSync(dashboardDir)) fs.mkdirSync(dashboardDir);
