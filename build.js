@@ -873,13 +873,14 @@ toolbarChevron.addEventListener('click', () => {
 
 const resetFab = document.getElementById('reset-fab');
 
+const chkDirty = id => { const el = document.getElementById(id); return !!el && !el.disabled && !el.checked; };
 const isFiltersDirty = () =>
   parseInt(pmin.value) !== globalMin ||
   parseInt(pmax.value) !== globalMax ||
   document.getElementById('search').value !== '' ||
-  !(document.getElementById('chk-in')?.checked ?? true) ||
-  !(document.getElementById('chk-out')?.checked ?? true) ||
-  !(document.getElementById('chk-new')?.checked ?? true) ||
+  chkDirty('chk-in') ||
+  chkDirty('chk-out') ||
+  chkDirty('chk-new') ||
   cselValue !== '' ||
   sortIdx !== 0 ||
   showOnlyPriceDrops;
