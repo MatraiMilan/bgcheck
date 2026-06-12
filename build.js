@@ -291,7 +291,7 @@ const getState = p => {
   const latest = p.history.at(-1);
   if (latest.outOfStock) return 'out';
   if (p.history.length === 1) return 'new';
-  if (p.history.at(-2).price === null) return 'back';
+  if (p.history.at(-2).outOfStock) return 'back';
   return 'in';
 };
 const inCount  = all.filter(p => getState(p) === 'in').length;
@@ -472,7 +472,7 @@ Object.entries(DATA.products).forEach(([id, p], origIdx) => {
   const diff = (!p.removed && prev && prev.price !== null) ? latest.price - prev.price : 0;
   const changeHtml = diff > 0 ? '<span class="change up" title="+' + fmt(diff) + '">&#9650;</span>'
     : diff < 0 ? '<span class="change down" title="-' + fmt(-diff) + '">&#9660;</span>' : '';
-  const state = p.removed ? 'removed' : latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.price === null) ? 'back' : 'in';
+  const state = p.removed ? 'removed' : latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.outOfStock) ? 'back' : 'in';
   const badgeText = { in: 'Készleten', out: 'Elfogyott', new: 'Új', back: 'Újra elérhető', removed: 'Törölve' }[state];
 
   const imgHtml = p.image
