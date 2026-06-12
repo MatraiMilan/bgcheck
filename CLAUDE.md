@@ -38,6 +38,20 @@ Crawling runs automatically via **GitHub Actions** (`.github/workflows/crawl.yml
 
 GitHub Actions handles crawling. The local `beercheck.timer` systemd timer runs `check-update.js` every 30 minutes for desktop notifications.
 
+## Card status semantics
+
+Each product card shows exactly one badge, determined by this priority order:
+
+| State | Badge | Condition |
+|---|---|---|
+| `removed` | Törölve | Product disappeared from the website |
+| `out` | Elfogyott | Latest snapshot is out of stock |
+| `new` | Új | First time ever seen (history.length === 1) |
+| `back` | Újra elérhető | Previous snapshot was out of stock, now in stock |
+| `in` | Készleten | Default: in stock, not new, not returning |
+
+**Hierarchy**: `Elfogyott` is the complement of `Készleten`. `Új` and `Újra elérhető` are subsets of `Készleten` (they only appear when in stock). `Törölve` is a subset of `Elfogyott` (more specific, so checked first). A new product that is already out of stock correctly shows `Elfogyott`, not `Új`.
+
 ## Key constants
 
 | Constant | Purpose |

@@ -1031,7 +1031,8 @@ export const build = async () => {
                 for (const [id, curr] of currById) {
                         const prev = prevById.get(id);
                         if (!prev) {
-                                changes.push(mkEntry(id, curr, 'new', null, Math.round(parseFloat(curr.price))));
+                                const newPrice = Math.round(parseFloat(curr.price));
+                                changes.push(mkEntry(id, curr, curr.outOfStock ? 'oos' : 'new', null, newPrice));
                                 continue;
                         }
                         const currPrice = Math.round(parseFloat(curr.price));
