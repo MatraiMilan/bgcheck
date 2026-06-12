@@ -702,7 +702,7 @@ if (!lastViewed || new Date(lastViewed) < new Date(DATA.lastCrawl)) {
   bellBadge.style.display = 'flex';
 }
 
-const closeDiffModal = () => { diffOverlay.classList.remove('open'); updateBodyScroll(); };
+const closeDiffModal = () => { diffOverlay.classList.remove('open'); updateBodyScroll(); currentDiffIdx = Math.max(0, diffs.length - 1); };
 document.getElementById('diff-modal-close').addEventListener('click', closeDiffModal);
 diffOverlay.addEventListener('click', e => { if (e.target === diffOverlay) closeDiffModal(); });
 
