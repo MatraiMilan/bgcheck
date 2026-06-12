@@ -157,6 +157,9 @@ body.scroll-locked{position:fixed;width:100%}
 .diff-empty{text-align:center;padding:32px 0;color:#999;font-size:.9rem}
 .ext-link{color:#d97706;display:inline-flex;align-items:center;flex-shrink:0;padding:2px;border-radius:3px;transition:opacity .15s}
 .ext-link:hover{opacity:.7}
+.spotlight-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;opacity:0;transition:opacity .3s;pointer-events:none}
+.spotlight-overlay.visible{opacity:1;pointer-events:auto}
+.card.spotlighted{position:relative;z-index:51}
 </style>
 </head>
 <body>
@@ -618,6 +621,19 @@ grid.addEventListener('click', e => {
   updateBodyScroll();
 });
 
+// Spotlight
+let spotlightTimer = null;
+const clearSpotlight = () => {
+  if (spotlightTimer) { clearTimeout(spotlightTimer); spotlightTimer = null; }
+  const ovl = document.getElementById('spotlight-overlay');
+  if (!ovl) return;
+  ovl.classList.remove('visible');
+  ovl.addEventListener('transitionend', () => {
+    ovl.remove();
+    document.querySelectorAll('.card.spotlighted').forEach(c => c.classList.remove('spotlighted'));
+  }, { once: true });
+};
+
 // Bell / diff modal
 const bellBtn = document.getElementById('bell-btn');
 const bellBadge = document.getElementById('bell-badge');
@@ -661,11 +677,11 @@ const makeDiffItemsHtml = diff => {
     } else if ((c.type === 'oos' || c.type === 'back') && c.newPrice != null) {
       extra = '<span style="color:#888;font-size:.75rem">' + fmt(c.newPrice) + '</span>';
     }
-    return '<a href="' + escA(c.url) + '" target="_blank" rel="noopener" class="diff-item">' + imgHtml +
+    return '<div class="diff-item" data-product-id="' + escA(c.id) + '">' + imgHtml +
       '<div style="flex:1;min-width:0">' +
         '<div class="diff-item-name">' + esc(c.name) + '</div>' +
         '<div class="diff-item-change">' + diffTypeLabel(c.type) + extra + '</div>' +
-      '</div></a>';
+      '</div></div>';
   }).join('');
 };
 
@@ -737,6 +753,24 @@ diffPrevBtn.addEventListener('click', () => navigateDiff(currentDiffIdx - 1, 'pr
 diffNextBtn.addEventListener('click', () => navigateDiff(currentDiffIdx + 1, 'next'));
 
 const diffListEl = document.getElementById('diff-list');
+diffListEl.addEventListener('click', e => {
+  const item = e.target.closest('.diff-item');
+  if (!item) return;
+  const productId = item.dataset.productId;
+  const card = document.querySelector('.card[data-id="' + productId + '"]');
+  closeDiffModal();
+  if (!card) return;
+  clearSpotlight();
+  const ovl = document.createElement('div');
+  ovl.id = 'spotlight-overlay';
+  ovl.className = 'spotlight-overlay';
+  ovl.addEventListener('click', clearSpotlight);
+  document.body.appendChild(ovl);
+  card.classList.add('spotlighted');
+  requestAnimationFrame(() => requestAnimationFrame(() => ovl.classList.add('visible')));
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  spotlightTimer = setTimeout(clearSpotlight, 3000);
+});
 let diffTouchX = null;
 diffListEl.addEventListener('touchstart', e => { diffTouchX = e.touches[0].clientX; }, { passive: true });
 diffListEl.addEventListener('touchend', e => {
