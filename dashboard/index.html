@@ -19,9 +19,19 @@ header h1{font-size:1.3rem;font-weight:700}
 .stats-total{font-size:.83rem;color:#666}
 .stat{font-size:.83rem;color:#666}
 .stat strong{color:#1a1a1a;font-weight:600}
-#search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s;margin-left:auto}
+.search-wrap{position:relative;margin-left:auto}
+#search{padding:7px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;width:210px;outline:none;transition:border-color .15s;display:block}
 #search:focus{border-color:#d97706}
 #search::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;cursor:pointer;width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M1 1l10 10M11 1L1 11' stroke='%23d97706' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center/contain}
+#search-dropdown{display:none;position:absolute;top:calc(100% + 4px);right:0;left:auto;width:600px;background:#fff;border:1.5px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:50;overflow:hidden}
+#search-dropdown.open{display:block}
+.sdrop-scroll{max-height:260px;overflow-y:auto}
+.sdrop-item{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;transition:background .1s}
+.sdrop-item:hover,.sdrop-item.active{background:#fdf6ee}
+.sdrop-img{width:42px;height:42px;object-fit:contain;flex-shrink:0;border-radius:4px;background:#fdf6ee}
+.sdrop-img-ph{width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:#fdf6ee;border-radius:4px}
+.sdrop-name{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.sdrop-hl{background:#fef3c7;color:#92400e;border-radius:2px;padding:0 1px;font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px;padding:28px 32px 28px;max-width:1400px;margin:0 auto}
 .card{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s}
 .card:hover{box-shadow:0 5px 18px rgba(0,0,0,.26);transform:translateY(-2px)}
@@ -101,7 +111,7 @@ header h1{font-size:1.3rem;font-weight:700}
 .toolbar-chevron::after{content:'';position:absolute;top:3px;left:50%;width:9px;height:9px;border-right:1.5px solid #1a1a1a;border-bottom:1.5px solid #1a1a1a;transform:translateX(-50%) rotate(45deg);transition:transform .4s ease,top .4s ease}
 .toolbar-chevron.active::after{transform:translateX(-50%) rotate(225deg);top:7px}
 .toolbar-filters{display:contents}
-@media(min-width:1178px){#search{margin-left:0}}
+@media(min-width:1238px){.search-wrap{margin-left:0}}
 @media(max-width:785px){
   .toolbar{padding:8px 12px 8px;gap:12px;align-items:center}
   .toolbar-chevron{display:block}
@@ -113,7 +123,9 @@ header h1{font-size:1.3rem;font-weight:700}
   .csel{width:100%}
   .csel-btn{width:100%}
   .csel-list{width:100%}
+  .search-wrap{width:100%}
   #search{width:100%}
+  #search-dropdown{width:100%;left:0;right:0}
   .grid{padding:34px 14px 14px;gap:14px}
   .reset-fab{width:60px;height:60px}
   .reset-fab.pushed{bottom:96px}
@@ -202,7 +214,10 @@ body.scroll-locked{position:fixed;width:100%}
       </button>
       <div class="csel-list" id="csel-list"></div>
     </div>
-    <input id="search" type="search" placeholder="Keresés…">
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Keresés…" autocomplete="off">
+      <div id="search-dropdown"></div>
+    </div>
   </div>
   <div class="toolbar-chevron" id="toolbar-chevron"></div>
 </div>
@@ -505,7 +520,46 @@ const sparkObs = new IntersectionObserver(entries => {
 document.querySelectorAll('.sparkline-wrap canvas').forEach(c => sparkObs.observe(c));
 
 
-document.getElementById('search').addEventListener('input', applyFilters);
+const searchEl = document.getElementById('search');
+const searchDropdown = document.getElementById('search-dropdown');
+
+const closeDropdown = () => searchDropdown.classList.remove('open');
+
+const updateDropdown = () => {
+  const q = searchEl.value.trim();
+  if (!q) { closeDropdown(); return; }
+  const visible = [...document.querySelectorAll('.card:not(.hidden)')];
+  if (!visible.length) { closeDropdown(); return; }
+  const items = visible.map(card => {
+    const p = DATA.products[card.dataset.id];
+    const imgEl = p.image
+      ? '<img class="sdrop-img" src="' + escA(p.image) + '" alt="" onerror="this.style.display=\'none\'">'
+      : '<span class="sdrop-img-ph">&#x1F37A;</span>';
+    const idx = p.name.toLowerCase().indexOf(q);
+    const nameHtml = idx === -1 ? esc(p.name)
+      : esc(p.name.slice(0, idx)) + '<span class="sdrop-hl">' + esc(p.name.slice(idx, idx + q.length)) + '</span>' + esc(p.name.slice(idx + q.length));
+    return '<div class="sdrop-item" data-name="' + escA(p.name) + '">' + imgEl + '<span class="sdrop-name">' + nameHtml + '</span></div>';
+  }).join('');
+  searchDropdown.innerHTML = '<div class="sdrop-scroll">' + items + '</div>';
+  searchDropdown.classList.add('open');
+};
+
+searchEl.addEventListener('input', () => { applyFilters(); updateDropdown(); });
+
+searchDropdown.addEventListener('mousedown', e => {
+  const item = e.target.closest('.sdrop-item');
+  if (!item) return;
+  e.preventDefault();
+  searchEl.value = item.dataset.name;
+  closeDropdown();
+  applyFilters();
+});
+
+searchEl.addEventListener('blur', closeDropdown);
+
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDropdown(); }
+});
 
 // Modal
 const overlay = document.getElementById('overlay');
