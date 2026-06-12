@@ -455,9 +455,11 @@ const applySort = () => {
     cards.sort((a, b) => a.dataset.origIdx - b.dataset.origIdx);
   } else {
     cards.sort((a, b) => {
-      const pa = DATA.products[a.dataset.id].history.at(-1).price;
-      const pb = DATA.products[b.dataset.id].history.at(-1).price;
-      return state === 'asc' ? pa - pb : pb - pa;
+      const pa = DATA.products[a.dataset.id];
+      const pb = DATA.products[b.dataset.id];
+      const priceA = pa.removed ? pa.lastKnownPrice : pa.history.at(-1).price;
+      const priceB = pb.removed ? pb.lastKnownPrice : pb.history.at(-1).price;
+      return state === 'asc' ? priceA - priceB : priceB - priceA;
     });
   }
   cards.forEach(c => grid.appendChild(c));
