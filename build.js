@@ -821,6 +821,7 @@ diffListEl.addEventListener('click', e => {
   ovl.addEventListener('click', clearSpotlight);
   document.body.appendChild(ovl);
   card.classList.add('spotlighted');
+  card.addEventListener('click', clearSpotlight, { once: true });
   requestAnimationFrame(() => requestAnimationFrame(() => ovl.classList.add('visible')));
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   spotlightTimer = setTimeout(clearSpotlight, 3000);
