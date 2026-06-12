@@ -291,12 +291,12 @@ const getState = p => {
   const latest = p.history.at(-1);
   if (latest.outOfStock) return 'out';
   if (p.history.length === 1) return 'new';
-  if (p.history.at(-2).outOfStock) return 'back';
+  if (p.history.at(-2).outOfStock || p.history.at(-2).price === null) return 'back';
   return 'in';
 };
-const inCount  = all.filter(p => getState(p) === 'in').length;
+const inCount  = all.filter(p => getState(p) === 'in' || getState(p) === 'back').length;
 const outCount = all.filter(p => getState(p) === 'out' || getState(p) === 'removed').length;
-const newCount = all.filter(p => getState(p) === 'new' || getState(p) === 'back').length;
+const newCount = all.filter(p => getState(p) === 'new').length;
 const statCheck = (id, label, count) =>
   '<label class="stat-check' + (count === 0 ? ' disabled' : '') + '"><input type="checkbox" id="' + id + '"' + (count === 0 ? ' disabled' : ' checked') + '> ' + label + ': <strong>' + count + '</strong></label>';
 document.getElementById('stats').innerHTML =
@@ -402,7 +402,7 @@ const applyFilters = () => {
     const hidden =
       (q && !card.dataset.name.includes(q)) ||
       (displayPrice < lo || displayPrice > hi) ||
-      (state === 'out' || state === 'removed' ? !showOut : state === 'in' ? !showIn : !showNew) ||
+      (state === 'out' || state === 'removed' ? !showOut : state === 'in' || state === 'back' ? !showIn : !showNew) ||
       (section && p.section !== section) ||
       (showOnlyPriceDrops && !priceDropIds.has(card.dataset.id));
     card.classList.toggle('hidden', hidden);
@@ -474,7 +474,7 @@ Object.entries(DATA.products).forEach(([id, p], origIdx) => {
   const diff = (!p.removed && prev && prev.price !== null) ? latest.price - prev.price : 0;
   const changeHtml = diff > 0 ? '<span class="change up" title="+' + fmt(diff) + '">&#9650;</span>'
     : diff < 0 ? '<span class="change down" title="-' + fmt(-diff) + '">&#9660;</span>' : '';
-  const state = p.removed ? 'removed' : latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.outOfStock) ? 'back' : 'in';
+  const state = p.removed ? 'removed' : latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && (prev.outOfStock || prev.price === null)) ? 'back' : 'in';
   const badgeText = { in: 'Készleten', out: 'Elfogyott', new: 'Új', back: 'Újra elérhető', removed: 'Törölve' }[state];
 
   const imgHtml = p.image
