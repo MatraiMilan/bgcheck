@@ -43,6 +43,7 @@ header h1{font-size:1.3rem;font-weight:700}
 .badge.out{background:#fee2e2;color:#b91c1c}
 .badge.new{background:#dbeafe;color:#1d4ed8}
 .badge.back{background:#ede9fe;color:#7c3aed}
+.badge.removed{background:#f3f4f6;color:#6b7280}
 .card-body{padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;flex:1}
 .card-name{font-size:.9rem;font-weight:600;line-height:1.4;color:#2d2015;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-price-row{display:flex;align-items:center;gap:7px}
@@ -268,6 +269,7 @@ document.getElementById('meta').textContent = 'Generálva: ' + DATA.generatedAt;
 
 const all = Object.values(DATA.products);
 const getState = p => {
+  if (p.removed) return 'removed';
   const latest = p.history.at(-1);
   if (latest.outOfStock) return 'out';
   if (p.history.length === 1) return 'new';
@@ -275,7 +277,7 @@ const getState = p => {
   return 'in';
 };
 const inCount  = all.filter(p => getState(p) === 'in').length;
-const outCount = all.filter(p => getState(p) === 'out').length;
+const outCount = all.filter(p => getState(p) === 'out' || getState(p) === 'removed').length;
 const newCount = all.filter(p => getState(p) === 'new' || getState(p) === 'back').length;
 const statCheck = (id, label, count) =>
   '<label class="stat-check' + (count === 0 ? ' disabled' : '') + '"><input type="checkbox" id="' + id + '"' + (count === 0 ? ' disabled' : ' checked') + '> ' + label + ': <strong>' + count + '</strong></label>';
@@ -288,7 +290,7 @@ document.getElementById('stats').innerHTML =
   '</div>';
 
 // Price range init
-const allPrices = all.map(p => p.history.at(-1).price);
+const allPrices = all.map(p => p.removed ? p.lastKnownPrice : p.history.at(-1).price);
 const globalMin = Math.min(...allPrices);
 const globalMax = Math.max(...allPrices);
 const pmin = document.getElementById('pmin');
@@ -378,10 +380,11 @@ const applyFilters = () => {
     const p = DATA.products[card.dataset.id];
     const latest = p.history.at(-1);
     const state = card.dataset.state;
+    const displayPrice = p.removed ? p.lastKnownPrice : latest.price;
     const hidden =
       (q && !card.dataset.name.includes(q)) ||
-      (latest.price < lo || latest.price > hi) ||
-      (state === 'out' ? !showOut : state === 'in' ? !showIn : !showNew) ||
+      (displayPrice < lo || displayPrice > hi) ||
+      (state === 'out' || state === 'removed' ? !showOut : state === 'in' ? !showIn : !showNew) ||
       (section && p.section !== section) ||
       (showOnlyPriceDrops && !priceDropIds.has(card.dataset.id));
     card.classList.toggle('hidden', hidden);
@@ -448,11 +451,11 @@ const grid = document.getElementById('grid');
 Object.entries(DATA.products).forEach(([id, p], origIdx) => {
   const latest = p.history.at(-1);
   const prev = p.history.length > 1 ? p.history.at(-2) : null;
-  const diff = (prev && prev.price !== null) ? latest.price - prev.price : 0;
+  const diff = (!p.removed && prev && prev.price !== null) ? latest.price - prev.price : 0;
   const changeHtml = diff > 0 ? '<span class="change up" title="+' + fmt(diff) + '">&#9650;</span>'
     : diff < 0 ? '<span class="change down" title="-' + fmt(-diff) + '">&#9660;</span>' : '';
-  const state = latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.price === null) ? 'back' : 'in';
-  const badgeText = { in: 'Készleten', out: 'Elfogyott', new: 'Új', back: 'Újra elérhető' }[state];
+  const state = p.removed ? 'removed' : latest.outOfStock ? 'out' : p.history.length === 1 ? 'new' : (prev && prev.price === null) ? 'back' : 'in';
+  const badgeText = { in: 'Készleten', out: 'Elfogyott', new: 'Új', back: 'Újra elérhető', removed: 'Törölve' }[state];
 
   const imgHtml = p.image
     ? '<div class="card-img-inner"><img src="' + escA(p.image) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';this.nextSibling.style.display=\\'flex\\'"></div>'
@@ -472,7 +475,7 @@ Object.entries(DATA.products).forEach(([id, p], origIdx) => {
     '</div>' +
     '<div class="card-body">' +
       '<div class="card-name">' + esc(p.name) + '</div>' +
-      '<div class="card-price-row"><span class="card-price">' + fmt(latest.price) + '</span>' + changeHtml + '</div>' +
+      '<div class="card-price-row"><span class="card-price">' + fmt(p.removed ? p.lastKnownPrice : latest.price) + '</span>' + changeHtml + '</div>' +
     '</div>' +
     '<div class="sparkline-wrap"><canvas data-id="' + id + '"></canvas></div>';
   grid.appendChild(card);
@@ -564,14 +567,15 @@ grid.addEventListener('click', e => {
 
   const modalState = card.dataset.state;
   const statusHtml = {
-    in:   '<span style="color:#15803d;font-weight:600">Készleten</span>',
-    out:  '<span style="color:#b91c1c;font-weight:600">Elfogyott</span>',
-    new:  '<span style="color:#1d4ed8;font-weight:600">Új</span>',
-    back: '<span style="color:#7c3aed;font-weight:600">Újra elérhető</span>',
+    in:      '<span style="color:#15803d;font-weight:600">Készleten</span>',
+    out:     '<span style="color:#b91c1c;font-weight:600">Elfogyott</span>',
+    new:     '<span style="color:#1d4ed8;font-weight:600">Új</span>',
+    back:    '<span style="color:#7c3aed;font-weight:600">Újra elérhető</span>',
+    removed: '<span style="color:#6b7280;font-weight:600">Törölve a weboldalról</span>',
   }[modalState];
 
   document.getElementById('modal-kpis').innerHTML =
-    kpi('Jelenlegi ár', fmt(latest.price)) +
+    kpi('Utolsó ismert ár', fmt(p.removed ? p.lastKnownPrice : latest.price)) +
     kpi('Min. ár', fmt(minP)) +
     kpi('Max. ár', fmt(maxP)) +
     kpi('Első adat', fmtDate(p.history[0].t)) +
@@ -910,8 +914,18 @@ export const build = async () => {
         const generatedAt = new Date().toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' });
         const lastCrawl = snapshots[snapshots.length - 1].timestamp;
 
+        const latestSnapIds = new Set(snapshots.at(-1).products.map(p => String(p.id)));
+
         const visibleProducts = Object.fromEntries(
-                Object.entries(products).filter(([_, p]) => p.history.at(-1).t === lastCrawl)
+                Object.entries(products)
+                        .filter(([_, p]) => p.history.at(-1).t === lastCrawl)
+                        .map(([id, p]) => {
+                                const removed = !latestSnapIds.has(id);
+                                const lastKnownPrice = removed
+                                        ? [...p.history].reverse().find(h => h.price !== null)?.price ?? null
+                                        : null;
+                                return [id, { ...p, removed, lastKnownPrice }];
+                        })
         );
 
         // Compute all pairwise diffs
